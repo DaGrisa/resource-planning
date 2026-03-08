@@ -8,6 +8,9 @@ using ResourcePlanning.Api.Data;
 using ResourcePlanning.Api.Middleware;
 using ResourcePlanning.Api.Services;
 
+// Load .env file (local dev secrets — not committed to git)
+DotNetEnv.Env.TraversePath().Load();
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Validate JWT key is not the placeholder
