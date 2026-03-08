@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using ResourcePlanning.Api.DTOs;
 using ResourcePlanning.Api.Entities;
 using ResourcePlanning.Api.Services;
@@ -7,6 +8,7 @@ namespace ResourcePlanning.Tests;
 public class PlanningServiceTests : IDisposable
 {
     private readonly TestDbContextFactory _factory;
+    private static readonly IConfiguration DefaultConfig = new ConfigurationBuilder().Build();
 
     public PlanningServiceTests()
     {
@@ -30,7 +32,7 @@ public class PlanningServiceTests : IDisposable
     {
         using var db = _factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
-        var service = new PlanningService(db);
+        var service = new PlanningService(db, DefaultConfig);
 
         await service.UpsertAllocationsAsync(new List<AllocationUpsertDto>
         {
@@ -47,7 +49,7 @@ public class PlanningServiceTests : IDisposable
     {
         using var db = _factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
-        var service = new PlanningService(db);
+        var service = new PlanningService(db, DefaultConfig);
 
         await service.UpsertAllocationsAsync(new List<AllocationUpsertDto>
         {
@@ -68,7 +70,7 @@ public class PlanningServiceTests : IDisposable
     {
         using var db = _factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
-        var service = new PlanningService(db);
+        var service = new PlanningService(db, DefaultConfig);
 
         await service.UpsertAllocationsAsync(new List<AllocationUpsertDto>
         {
@@ -88,7 +90,7 @@ public class PlanningServiceTests : IDisposable
     {
         using var db = _factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
-        var service = new PlanningService(db);
+        var service = new PlanningService(db, DefaultConfig);
 
         // 35h / 40h = 87.5% → optimal
         await service.UpsertAllocationsAsync(new List<AllocationUpsertDto>
@@ -110,7 +112,7 @@ public class PlanningServiceTests : IDisposable
         var projService = new ProjectService(db);
         var proj2 = await projService.CreateAsync(new ProjectCreateDto("P2", ProjectType.Internal));
 
-        var service = new PlanningService(db);
+        var service = new PlanningService(db, DefaultConfig);
 
         // 30h + 15h = 45h / 40h = 112.5% → over
         await service.UpsertAllocationsAsync(new List<AllocationUpsertDto>
@@ -128,7 +130,7 @@ public class PlanningServiceTests : IDisposable
     {
         using var db = _factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
-        var service = new PlanningService(db);
+        var service = new PlanningService(db, DefaultConfig);
 
         // 10h / 40h = 25% → under
         await service.UpsertAllocationsAsync(new List<AllocationUpsertDto>
@@ -145,7 +147,7 @@ public class PlanningServiceTests : IDisposable
     {
         using var db = _factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
-        var service = new PlanningService(db);
+        var service = new PlanningService(db, DefaultConfig);
 
         await service.UpsertAllocationsAsync(new List<AllocationUpsertDto>
         {
@@ -163,7 +165,7 @@ public class PlanningServiceTests : IDisposable
     public async Task GetEmployeeAllocationsAsync_ShouldReturnNull_WhenNotFound()
     {
         using var db = _factory.CreateContext();
-        var service = new PlanningService(db);
+        var service = new PlanningService(db, DefaultConfig);
 
         var result = await service.GetEmployeeAllocationsAsync(999, 2026, 1, 10);
         Assert.Null(result);
@@ -174,7 +176,7 @@ public class PlanningServiceTests : IDisposable
     {
         using var db = _factory.CreateContext();
         var (_, projId) = await SeedEmployeeAndProject(db);
-        var service = new PlanningService(db);
+        var service = new PlanningService(db, DefaultConfig);
 
         await service.UpsertProjectBudgetsAsync(new List<ProjectWeeklyBudgetUpsertDto>
         {
@@ -191,7 +193,7 @@ public class PlanningServiceTests : IDisposable
     {
         using var db = _factory.CreateContext();
         var (_, projId) = await SeedEmployeeAndProject(db);
-        var service = new PlanningService(db);
+        var service = new PlanningService(db, DefaultConfig);
 
         await service.UpsertProjectBudgetsAsync(new List<ProjectWeeklyBudgetUpsertDto>
         {
@@ -211,7 +213,7 @@ public class PlanningServiceTests : IDisposable
     {
         using var db = _factory.CreateContext();
         var (_, projId) = await SeedEmployeeAndProject(db);
-        var service = new PlanningService(db);
+        var service = new PlanningService(db, DefaultConfig);
 
         await service.UpsertProjectBudgetsAsync(new List<ProjectWeeklyBudgetUpsertDto>
         {
@@ -231,7 +233,7 @@ public class PlanningServiceTests : IDisposable
     {
         using var db = _factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
-        var service = new PlanningService(db);
+        var service = new PlanningService(db, DefaultConfig);
 
         // Budget 40h, allocate 35h → 87.5% → optimal
         await service.UpsertProjectBudgetsAsync(new List<ProjectWeeklyBudgetUpsertDto>
@@ -253,7 +255,7 @@ public class PlanningServiceTests : IDisposable
     {
         using var db = _factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
-        var service = new PlanningService(db);
+        var service = new PlanningService(db, DefaultConfig);
 
         // Budget 20h, allocate 25h → 125% → over
         await service.UpsertProjectBudgetsAsync(new List<ProjectWeeklyBudgetUpsertDto>
@@ -280,7 +282,7 @@ public class PlanningServiceTests : IDisposable
         var emp2 = await empService.CreateAsync(new EmployeeCreateDto("Bob", "B", "bob@t.com", 40m));
         var proj = await projService.CreateAsync(new ProjectCreateDto("Proj", ProjectType.Customer));
 
-        var service = new PlanningService(db);
+        var service = new PlanningService(db, DefaultConfig);
 
         await service.UpsertProjectBudgetsAsync(new List<ProjectWeeklyBudgetUpsertDto>
         {

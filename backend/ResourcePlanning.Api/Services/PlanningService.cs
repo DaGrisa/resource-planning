@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using ResourcePlanning.Api.Data;
 using ResourcePlanning.Api.DTOs;
 using ResourcePlanning.Api.Entities;
@@ -8,8 +9,13 @@ namespace ResourcePlanning.Api.Services;
 public class PlanningService : IPlanningService
 {
     private readonly AppDbContext _db;
+    private readonly decimal _optimalThreshold;
 
-    public PlanningService(AppDbContext db) => _db = db;
+    public PlanningService(AppDbContext db, IConfiguration configuration)
+    {
+        _db = db;
+        _optimalThreshold = configuration.GetValue<decimal>("Planning:OptimalThresholdPercent", 80);
+    }
 
     public async Task<List<CapacityAllocationDto>> GetAllocationsAsync(int year, int weekFrom, int weekTo,
         int? employeeId = null, int? projectId = null, int? departmentId = null)
@@ -128,7 +134,7 @@ public class PlanningService : IPlanningService
 
                 var totalHours = weekAllocations.Sum(a => a.PlannedHours) + absenceHours;
                 var percentage = emp.WeeklyHours > 0 ? totalHours / emp.WeeklyHours * 100 : 0;
-                var status = percentage > 100 ? "over" : percentage >= 80 ? "optimal" : "under";
+                var status = percentage > 100 ? "over" : percentage >= _optimalThreshold ? "optimal" : "under";
 
                 weeks.Add(new WeekSummaryDto(
                     w, year, totalHours, Math.Round(percentage, 1), status,
@@ -206,7 +212,7 @@ public class PlanningService : IPlanningService
 
                 var allocatedHours = weekAllocations.Sum(a => a.PlannedHours);
                 var percentage = budgetedHours > 0 ? allocatedHours / budgetedHours * 100 : 0;
-                var status = budgetedHours <= 0 ? "none" : percentage > 100 ? "over" : percentage >= 80 ? "optimal" : "under";
+                var status = budgetedHours <= 0 ? "none" : percentage > 100 ? "over" : percentage >= _optimalThreshold ? "optimal" : "under";
 
                 weeks.Add(new ProjectWeekSummaryDto(
                     w, year, budgetedHours, allocatedHours, Math.Round(percentage, 1), status,

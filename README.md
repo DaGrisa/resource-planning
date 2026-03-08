@@ -137,10 +137,15 @@ Before running, set the following values in `backend/ResourcePlanning.Api/appset
 },
 "Cors": {
   "AllowedOrigins": [ "https://your-frontend-domain.com" ]
+},
+"Planning": {
+  "OptimalThresholdPercent": 80
 }
 ```
 
 The application will refuse to start if `Jwt:Key` is still the placeholder value.
+
+`Planning:OptimalThresholdPercent` controls the minimum utilization percentage at which a week is considered **optimal** (green). Below this threshold the week is shown as **under** (orange). Defaults to `80`.
 
 ### Database providers
 

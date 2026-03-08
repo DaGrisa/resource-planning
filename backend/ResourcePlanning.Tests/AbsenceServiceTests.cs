@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using ResourcePlanning.Api.DTOs;
 using ResourcePlanning.Api.Entities;
 using ResourcePlanning.Api.Services;
@@ -7,6 +8,7 @@ namespace ResourcePlanning.Tests;
 public class AbsenceServiceTests : IDisposable
 {
     private readonly TestDbContextFactory _factory;
+    private static readonly IConfiguration DefaultConfig = new ConfigurationBuilder().Build();
 
     public AbsenceServiceTests()
     {
@@ -139,7 +141,7 @@ public class AbsenceServiceTests : IDisposable
         var projService = new ProjectService(db);
         var proj = await projService.CreateAsync(new ProjectCreateDto("Proj", ProjectType.Customer));
 
-        var planningService = new PlanningService(db);
+        var planningService = new PlanningService(db, DefaultConfig);
         var absenceService = new AbsenceService(db);
 
         // Allocate 20h to project + 20h absence = 40h total = 100% of 40h weekly
