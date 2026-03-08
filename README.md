@@ -12,7 +12,18 @@
 
 ---
 
-A web application for planning and monitoring employee capacity across projects and departments. Managers can allocate hours per employee and week, track over- and under-utilization, manage absences, and view planning status from both the employee and project perspective.
+A web application for planning and monitoring employee capacity across projects and departments.
+
+## Screenshots
+
+**Dashboard** — overview cards, planning status, and per-week alerts for over/under-planned employees
+![Dashboard](docs/screenshot-dashboard.png)
+
+**Employee Overview** — color-coded utilization grid across weeks and employees
+![Employee Overview](docs/screenshot-employee-overview.png)
+
+**Project Overview** — project utilization vs. weekly budget
+![Project Overview](docs/screenshot-project-overview.png) Managers can allocate hours per employee and week, track over- and under-utilization, manage absences, and view planning status from both the employee and project perspective.
 
 ## Tech Stack
 
