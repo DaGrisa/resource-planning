@@ -123,7 +123,38 @@ Before running, set a strong JWT secret key in `backend/ResourcePlanning.Api/app
 }
 ```
 
+### Database providers
+
+The application supports **SQLite** (development) and **SQL Server** (production), selected via `appsettings.json`:
+
+| Setting | Value | Description |
+|---|---|---|
+| `Database:Provider` | `Sqlite` | Uses SQLite — migrations from `Data/Migrations/` |
+| `Database:Provider` | `SqlServer` | Uses SQL Server — migrations from `Data/MigrationsSqlServer/` |
+
+**Development** (`appsettings.Development.json`) defaults to SQLite with `Data Source=resourceplanning.db`.
+
+**Production** (`appsettings.json`) defaults to SQL Server. Set the connection string before deploying:
+
+```json
+"Database": { "Provider": "SqlServer" },
+"ConnectionStrings": {
+  "SqlServer": "Server=your-server;Database=ResourcePlanning;User Id=sa;Password=your-password;TrustServerCertificate=True;"
+}
+```
+
 ### Managing migrations
+
+```bash
+# Add a SQLite migration (development)
+cd backend/ResourcePlanning.Api
+dotnet ef migrations add <Name> --output-dir Data/Migrations
+
+# Add a SQL Server migration (production)
+$env:DB_PROVIDER="SqlServer"
+dotnet ef migrations add <Name> --output-dir Data/MigrationsSqlServer
+$env:DB_PROVIDER=""
+```
 
 ```bash
 cd backend/ResourcePlanning.Api

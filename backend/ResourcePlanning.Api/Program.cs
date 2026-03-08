@@ -8,9 +8,23 @@ using ResourcePlanning.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Database
+// Database — provider selected via "Database:Provider" (Sqlite | SqlServer)
+var dbProvider = builder.Configuration["Database:Provider"] ?? "Sqlite";
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=resourceplanning.db"));
+{
+    if (dbProvider == "SqlServer")
+    {
+        options.UseSqlServer(
+            builder.Configuration.GetConnectionString("SqlServer"),
+            sql => sql.MigrationsHistoryTable("__EFMigrationsHistory")
+                      .MigrationsAssembly(typeof(Program).Assembly.GetName().Name));
+    }
+    else
+    {
+        options.UseSqlite(
+            builder.Configuration.GetConnectionString("Sqlite") ?? "Data Source=resourceplanning.db");
+    }
+});
 
 // Services
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();

@@ -115,7 +115,12 @@ Four roles defined as an enum (`Role.cs` / `auth.model.ts`):
 - **JSON enums**: ProjectType serialized as strings via JsonStringEnumConverter
 
 ## Database
-- SQLite file at `backend/ResourcePlanning.Api/resourceplanning.db`
+- Provider selected via `Database:Provider` in appsettings (`Sqlite` | `SqlServer`)
+- Development default: SQLite at `backend/ResourcePlanning.Api/resourceplanning.db`
+- Production default: SQL Server (connection string via `ConnectionStrings:SqlServer`)
+- SQLite migrations: `Data/Migrations/` — generated without env var
+- SQL Server migrations: `Data/MigrationsSqlServer/` — generated with `$env:DB_PROVIDER="SqlServer"`
+- `DesignTimeDbContextFactory` reads `DB_PROVIDER` env var to pick provider during migration generation
 - Auto-migrates and seeds on startup in Development mode
 - Seed data: 6 employees, 3 departments, 4 projects, 1 admin user; allocations/budgets/absences for 10 weeks starting from first-startup date (dynamic, handles year rollover)
 

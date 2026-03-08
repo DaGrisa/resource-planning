@@ -42,6 +42,11 @@ yarn-error.log*
 .env.*
 !.env.example
 
+# Screenshots / local assets in root
+*.png
+*.jpg
+*.jpeg
+
 # ── OS / editor ────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
