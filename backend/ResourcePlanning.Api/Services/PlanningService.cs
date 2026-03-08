@@ -29,6 +29,7 @@ public class PlanningService : IPlanningService
 
     public async Task UpsertAllocationsAsync(List<AllocationUpsertDto> allocations)
     {
+        await using var tx = await _db.Database.BeginTransactionAsync();
         foreach (var dto in allocations)
         {
             var existing = await _db.CapacityAllocations.FirstOrDefaultAsync(a =>
@@ -59,6 +60,7 @@ public class PlanningService : IPlanningService
         }
 
         await _db.SaveChangesAsync();
+        await tx.CommitAsync();
     }
 
     public async Task<List<EmployeeWeekOverviewDto>> GetOverviewAsync(int year, int weekFrom, int weekTo, int? departmentId = null)
@@ -182,6 +184,7 @@ public class PlanningService : IPlanningService
 
     public async Task UpsertProjectBudgetsAsync(List<ProjectWeeklyBudgetUpsertDto> budgets)
     {
+        await using var tx = await _db.Database.BeginTransactionAsync();
         foreach (var dto in budgets)
         {
             var existing = await _db.ProjectWeeklyBudgets.FirstOrDefaultAsync(b =>
@@ -210,5 +213,6 @@ public class PlanningService : IPlanningService
         }
 
         await _db.SaveChangesAsync();
+        await tx.CommitAsync();
     }
 }

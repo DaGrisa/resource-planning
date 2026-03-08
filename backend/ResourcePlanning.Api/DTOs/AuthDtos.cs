@@ -26,7 +26,7 @@ public record UserDto(
 
 public record UserCreateDto(
     [Required][MinLength(3)] string Username,
-    [Required][MinLength(6)] string Password,
+    [Required][MinLength(8)] string Password,
     [Required] string DisplayName,
     int? EmployeeId,
     string[]? Roles
@@ -41,5 +41,5 @@ public record UserUpdateDto(
 
 public record ChangePasswordDto(
     [Required] string CurrentPassword,
-    [Required][MinLength(6)] string NewPassword
+    [Required][MinLength(8)] string NewPassword
 );

@@ -5,7 +5,7 @@ namespace ResourcePlanning.Api.Data;
 
 public static class SeedData
 {
-    public static void Initialize(AppDbContext context, bool seedSampleData = false)
+    public static void Initialize(AppDbContext context, bool seedSampleData = false, string adminPassword = "admin123")
     {
         // Always seed admin user if no users exist
         if (!context.Users.Any())
@@ -13,7 +13,7 @@ public static class SeedData
             var admin = new User
             {
                 Username = "admin",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword),
                 DisplayName = "Administrator"
             };
             context.Users.Add(admin);

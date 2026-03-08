@@ -17,5 +17,5 @@ public record AbsenceUpsertDto(
     [Range(1, 53)] int CalendarWeek,
     [Range(2000, 2100)] int Year,
     [Range(0, 168)] decimal Hours,
-    string? Note
+    [StringLength(500)] string? Note
 );

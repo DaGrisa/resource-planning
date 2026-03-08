@@ -34,6 +34,7 @@ public class AbsenceService : IAbsenceService
 
     public async Task UpsertAbsencesAsync(List<AbsenceUpsertDto> absences)
     {
+        await using var tx = await _db.Database.BeginTransactionAsync();
         foreach (var dto in absences)
         {
             var existing = await _db.Absences.FirstOrDefaultAsync(a =>
@@ -64,6 +65,7 @@ public class AbsenceService : IAbsenceService
         }
 
         await _db.SaveChangesAsync();
+        await tx.CommitAsync();
     }
 
     public async Task<bool> DeleteAbsenceAsync(int id)

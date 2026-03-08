@@ -96,7 +96,23 @@ public class AuthorizationHelper : IAuthorizationHelper
         if (_currentUser.IsAdmin) return true;
 
         if (_currentUser.HasRole(Role.DepartmentManager))
-            return true; // DeptManagers can manage all projects
+        {
+            var managedDeptIds = await GetManagedDepartmentIdsAsync();
+            var hasTeamMember = await _db.ProjectAssignments
+                .Include(pa => pa.Employee)
+                .AnyAsync(pa => pa.ProjectId == projectId &&
+                                pa.Employee.DepartmentId.HasValue &&
+                                managedDeptIds.Contains(pa.Employee.DepartmentId.Value));
+            if (hasTeamMember) return true;
+
+            var employeeId = _currentUser.EmployeeId;
+            if (employeeId != null)
+            {
+                var isLead = await _db.Projects.AnyAsync(p => p.Id == projectId && p.ProjectLeadId == employeeId);
+                if (isLead) return true;
+            }
+            return false;
+        }
 
         if (_currentUser.HasRole(Role.ProjectManager))
         {

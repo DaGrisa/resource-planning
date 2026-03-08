@@ -33,6 +33,7 @@ public class UserService : IUserService
 
     public async Task<UserDto> CreateAsync(UserCreateDto dto)
     {
+        await using var tx = await _db.Database.BeginTransactionAsync();
         var user = new User
         {
             Username = dto.Username,
@@ -54,6 +55,7 @@ public class UserService : IUserService
             await _db.SaveChangesAsync();
         }
 
+        await tx.CommitAsync();
         await _db.Entry(user).Collection(u => u.Roles).LoadAsync();
         if (user.EmployeeId.HasValue)
             await _db.Entry(user).Reference(u => u.Employee).LoadAsync();
@@ -69,6 +71,7 @@ public class UserService : IUserService
 
         if (user == null) return false;
 
+        await using var tx = await _db.Database.BeginTransactionAsync();
         user.DisplayName = dto.DisplayName;
         user.EmployeeId = dto.EmployeeId;
         user.IsActive = dto.IsActive;
@@ -85,6 +88,7 @@ public class UserService : IUserService
         }
 
         await _db.SaveChangesAsync();
+        await tx.CommitAsync();
         return true;
     }
 

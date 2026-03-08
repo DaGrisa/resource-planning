@@ -90,6 +90,7 @@ public class ProjectService : IProjectService
         var project = await _db.Projects.Include(p => p.Assignments).FirstOrDefaultAsync(p => p.Id == id);
         if (project == null) return false;
 
+        await using var tx = await _db.Database.BeginTransactionAsync();
         _db.ProjectAssignments.RemoveRange(project.Assignments);
         foreach (var empId in employeeIds)
         {
@@ -97,6 +98,7 @@ public class ProjectService : IProjectService
         }
 
         await _db.SaveChangesAsync();
+        await tx.CommitAsync();
         return true;
     }
 

@@ -92,6 +92,7 @@ public class DepartmentService : IDepartmentService
         var dept = await _db.Departments.Include(d => d.Managers).FirstOrDefaultAsync(d => d.Id == id);
         if (dept == null) return false;
 
+        await using var tx = await _db.Database.BeginTransactionAsync();
         _db.DepartmentManagers.RemoveRange(dept.Managers);
         foreach (var empId in employeeIds)
         {
@@ -99,6 +100,7 @@ public class DepartmentService : IDepartmentService
         }
 
         await _db.SaveChangesAsync();
+        await tx.CommitAsync();
         return true;
     }
 }
