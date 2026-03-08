@@ -1,4 +1,5 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -141,9 +142,11 @@ import { getISOWeek, getWeekStart, formatShortDate } from '../../../core/utils/w
   `,
   styles: [`
     .cell-value { font-weight: 500; }
-  `]
+  `],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CapacityGridComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
   private planningService = inject(PlanningService);
   private projectService = inject(ProjectService);
   private departmentService = inject(DepartmentService);
@@ -174,8 +177,8 @@ export class CapacityGridComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.departmentService.getAll().subscribe(d => this.departments = d);
-    this.projectService.getAll().subscribe(p => this.projects = p);
+    this.departmentService.getAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => this.departments = d);
+    this.projectService.getAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(p => this.projects = p);
     this.loadData();
   }
 
@@ -189,7 +192,8 @@ export class CapacityGridComponent implements OnInit {
       weekTo: this.weekTo,
       departmentId: this.departmentId
     }).pipe(
-      finalize(() => this.loading = false)
+      finalize(() => this.loading = false),
+      takeUntilDestroyed(this.destroyRef)
     ).subscribe(data => this.overview = data);
   }
 
@@ -319,7 +323,7 @@ export class CapacityGridComponent implements OnInit {
   }
 
   save() {
-    this.planningService.upsertAllocations(this.pendingChanges).subscribe(() => {
+    this.planningService.upsertAllocations(this.pendingChanges).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.snackBar.open('Allocations saved', 'OK', { duration: 3000 });
       this.loadData();
     });

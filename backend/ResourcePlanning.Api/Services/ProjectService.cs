@@ -13,7 +13,7 @@ public class ProjectService : IProjectService
 
     public async Task<List<ProjectDto>> GetAllAsync(bool activeOnly = true, ProjectType? type = null)
     {
-        var query = _db.Projects.Include(p => p.ProjectLead).AsQueryable();
+        var query = _db.Projects.AsNoTracking().Include(p => p.ProjectLead).AsQueryable();
         if (activeOnly) query = query.Where(p => p.IsActive);
         if (type.HasValue) query = query.Where(p => p.ProjectType == type);
 
@@ -25,6 +25,7 @@ public class ProjectService : IProjectService
     public async Task<ProjectDetailDto?> GetByIdAsync(int id)
     {
         var p = await _db.Projects
+            .AsNoTracking()
             .Include(p => p.ProjectLead)
             .Include(p => p.Assignments).ThenInclude(a => a.Employee)
             .FirstOrDefaultAsync(p => p.Id == id);

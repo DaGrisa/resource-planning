@@ -13,7 +13,7 @@ public class EmployeeService : IEmployeeService
 
     public async Task<List<EmployeeDto>> GetAllAsync(bool activeOnly = true, int? departmentId = null)
     {
-        var query = _db.Employees.Include(e => e.Department).AsQueryable();
+        var query = _db.Employees.AsNoTracking().Include(e => e.Department).AsQueryable();
         if (activeOnly) query = query.Where(e => e.IsActive);
         if (departmentId.HasValue) query = query.Where(e => e.DepartmentId == departmentId);
 
@@ -24,7 +24,7 @@ public class EmployeeService : IEmployeeService
 
     public async Task<EmployeeDto?> GetByIdAsync(int id)
     {
-        var e = await _db.Employees.Include(e => e.Department).FirstOrDefaultAsync(e => e.Id == id);
+        var e = await _db.Employees.AsNoTracking().Include(e => e.Department).FirstOrDefaultAsync(e => e.Id == id);
         return e == null ? null : ToDto(e);
     }
 

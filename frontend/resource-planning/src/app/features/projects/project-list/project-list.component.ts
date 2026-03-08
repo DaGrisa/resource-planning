@@ -1,4 +1,5 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -109,9 +110,11 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
     .type-badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; background: #e0e0e0; }
     .type-badge[data-type="Customer"] { background: #bbdefb; }
     .type-badge[data-type="Internal"] { background: #c8e6c9; }
-  `]
+  `],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ProjectListComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
   private projectService = inject(ProjectService);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
@@ -128,7 +131,8 @@ export class ProjectListComponent implements OnInit {
   load() {
     this.loading = true;
     this.projectService.getAll(!this.showInactive, this.typeFilter).pipe(
-      finalize(() => this.loading = false)
+      finalize(() => this.loading = false),
+      takeUntilDestroyed(this.destroyRef)
     ).subscribe(d => this.projects = d);
   }
 

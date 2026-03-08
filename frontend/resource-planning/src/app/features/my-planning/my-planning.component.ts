@@ -1,4 +1,5 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -168,9 +169,11 @@ import { getISOWeek, getWeekStart, formatShortDate } from '../../core/utils/week
     .absence-cell { color: #e65100; font-style: italic; }
     .total-label { font-weight: 700; }
     .empty-cell { color: #ccc; }
-  `]
+  `],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MyPlanningComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
   private planningService = inject(PlanningService);
   private employeeService = inject(EmployeeService);
   private authService = inject(AuthService);
@@ -220,7 +223,7 @@ export class MyPlanningComponent implements OnInit {
         this.load();
       }
     } else {
-      this.employeeService.getAll().subscribe(emps => this.employees = emps);
+      this.employeeService.getAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(emps => this.employees = emps);
     }
   }
 
@@ -230,7 +233,7 @@ export class MyPlanningComponent implements OnInit {
     this.overview = undefined;
     this.planningService
       .getEmployeeAllocations(this.selectedEmployeeId, this.year, this.weekFrom, this.weekTo)
-      .pipe(finalize(() => this.loading = false))
+      .pipe(finalize(() => this.loading = false), takeUntilDestroyed(this.destroyRef))
       .subscribe(data => this.overview = data);
   }
 

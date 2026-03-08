@@ -15,6 +15,7 @@ public class AbsenceService : IAbsenceService
         int? employeeId = null, int? departmentId = null)
     {
         var query = _db.Absences
+            .AsNoTracking()
             .Include(a => a.Employee)
             .Where(a => a.Year == year && a.CalendarWeek >= weekFrom && a.CalendarWeek <= weekTo);
 
@@ -34,13 +35,26 @@ public class AbsenceService : IAbsenceService
 
     public async Task UpsertAbsencesAsync(List<AbsenceUpsertDto> absences)
     {
+        if (absences.Count == 0) return;
+
+        // Batch-load all potentially matching records in a single query
+        var employeeIds = absences.Select(d => d.EmployeeId).Distinct().ToList();
+        var years = absences.Select(d => d.Year).Distinct().ToList();
+        var calendarWeeks = absences.Select(d => d.CalendarWeek).Distinct().ToList();
+
+        var existingList = await _db.Absences
+            .Where(a => employeeIds.Contains(a.EmployeeId)
+                     && years.Contains(a.Year)
+                     && calendarWeeks.Contains(a.CalendarWeek))
+            .ToListAsync();
+
+        var existingMap = existingList.ToDictionary(
+            a => (a.EmployeeId, a.CalendarWeek, a.Year));
+
         await using var tx = await _db.Database.BeginTransactionAsync();
         foreach (var dto in absences)
         {
-            var existing = await _db.Absences.FirstOrDefaultAsync(a =>
-                a.EmployeeId == dto.EmployeeId &&
-                a.CalendarWeek == dto.CalendarWeek &&
-                a.Year == dto.Year);
+            existingMap.TryGetValue((dto.EmployeeId, dto.CalendarWeek, dto.Year), out var existing);
 
             if (dto.Hours <= 0)
             {

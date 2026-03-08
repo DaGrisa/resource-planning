@@ -15,6 +15,7 @@ public class PlanningService : IPlanningService
         int? employeeId = null, int? projectId = null, int? departmentId = null)
     {
         var query = _db.CapacityAllocations
+            .AsNoTracking()
             .Include(a => a.Employee)
             .Where(a => a.Year == year && a.CalendarWeek >= weekFrom && a.CalendarWeek <= weekTo);
 
@@ -29,14 +30,28 @@ public class PlanningService : IPlanningService
 
     public async Task UpsertAllocationsAsync(List<AllocationUpsertDto> allocations)
     {
+        if (allocations.Count == 0) return;
+
+        // Batch-load all potentially matching records in a single query
+        var employeeIds = allocations.Select(d => d.EmployeeId).Distinct().ToList();
+        var projectIds = allocations.Select(d => d.ProjectId).Distinct().ToList();
+        var years = allocations.Select(d => d.Year).Distinct().ToList();
+        var calendarWeeks = allocations.Select(d => d.CalendarWeek).Distinct().ToList();
+
+        var existingList = await _db.CapacityAllocations
+            .Where(a => employeeIds.Contains(a.EmployeeId)
+                     && projectIds.Contains(a.ProjectId)
+                     && years.Contains(a.Year)
+                     && calendarWeeks.Contains(a.CalendarWeek))
+            .ToListAsync();
+
+        var existingMap = existingList.ToDictionary(
+            a => (a.EmployeeId, a.ProjectId, a.CalendarWeek, a.Year));
+
         await using var tx = await _db.Database.BeginTransactionAsync();
         foreach (var dto in allocations)
         {
-            var existing = await _db.CapacityAllocations.FirstOrDefaultAsync(a =>
-                a.EmployeeId == dto.EmployeeId &&
-                a.ProjectId == dto.ProjectId &&
-                a.CalendarWeek == dto.CalendarWeek &&
-                a.Year == dto.Year);
+            existingMap.TryGetValue((dto.EmployeeId, dto.ProjectId, dto.CalendarWeek, dto.Year), out var existing);
 
             if (dto.PlannedHours <= 0)
             {
@@ -66,6 +81,7 @@ public class PlanningService : IPlanningService
     public async Task<List<EmployeeWeekOverviewDto>> GetOverviewAsync(int year, int weekFrom, int weekTo, int? departmentId = null)
     {
         var employeesQuery = _db.Employees
+            .AsNoTracking()
             .Include(e => e.Department)
             .Where(e => e.IsActive);
 
@@ -77,28 +93,39 @@ public class PlanningService : IPlanningService
         var employeeIds = employees.Select(e => e.Id).ToList();
 
         var allocations = await _db.CapacityAllocations
+            .AsNoTracking()
             .Include(a => a.Project)
             .Where(a => a.Year == year && a.CalendarWeek >= weekFrom && a.CalendarWeek <= weekTo)
             .Where(a => employeeIds.Contains(a.EmployeeId))
             .ToListAsync();
 
         var absences = await _db.Absences
+            .AsNoTracking()
             .Where(a => a.Year == year && a.CalendarWeek >= weekFrom && a.CalendarWeek <= weekTo)
             .Where(a => employeeIds.Contains(a.EmployeeId))
             .ToListAsync();
+
+        // O(1) dictionary lookups instead of O(N) repeated LINQ filtering per employee/week
+        var allocByKey = allocations
+            .GroupBy(a => (a.EmployeeId, a.CalendarWeek))
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var absenceHoursByKey = absences
+            .GroupBy(a => (a.EmployeeId, a.CalendarWeek))
+            .ToDictionary(g => g.Key, g => g.Sum(a => a.Hours));
 
         var result = new List<EmployeeWeekOverviewDto>();
 
         foreach (var emp in employees)
         {
-            var empAllocations = allocations.Where(a => a.EmployeeId == emp.Id).ToList();
-            var empAbsences = absences.Where(a => a.EmployeeId == emp.Id).ToList();
             var weeks = new List<WeekSummaryDto>();
 
             for (int w = weekFrom; w <= weekTo; w++)
             {
-                var weekAllocations = empAllocations.Where(a => a.CalendarWeek == w).ToList();
-                var absenceHours = empAbsences.Where(a => a.CalendarWeek == w).Sum(a => a.Hours);
+                allocByKey.TryGetValue((emp.Id, w), out var weekAllocations);
+                weekAllocations ??= [];
+                absenceHoursByKey.TryGetValue((emp.Id, w), out var absenceHours);
+
                 var totalHours = weekAllocations.Sum(a => a.PlannedHours) + absenceHours;
                 var percentage = emp.WeeklyHours > 0 ? totalHours / emp.WeeklyHours * 100 : 0;
                 var status = percentage > 100 ? "over" : percentage >= 80 ? "optimal" : "under";
@@ -127,7 +154,7 @@ public class PlanningService : IPlanningService
 
     public async Task<EmployeeWeekOverviewDto?> GetEmployeeAllocationsAsync(int employeeId, int year, int weekFrom, int weekTo)
     {
-        var emp = await _db.Employees.Include(e => e.Department).FirstOrDefaultAsync(e => e.Id == employeeId);
+        var emp = await _db.Employees.AsNoTracking().Include(e => e.Department).FirstOrDefaultAsync(e => e.Id == employeeId);
         if (emp == null) return null;
 
         var result = await GetOverviewAsync(year, weekFrom, weekTo);
@@ -136,33 +163,48 @@ public class PlanningService : IPlanningService
 
     public async Task<List<ProjectWeekOverviewDto>> GetProjectOverviewAsync(int year, int weekFrom, int weekTo)
     {
-        var projects = await _db.Projects.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
+        var projects = await _db.Projects
+            .AsNoTracking()
+            .Where(p => p.IsActive)
+            .OrderBy(p => p.Name)
+            .ToListAsync();
+
+        var projectIds = projects.Select(p => p.Id).ToList();
 
         var allocations = await _db.CapacityAllocations
+            .AsNoTracking()
             .Include(a => a.Employee)
             .Where(a => a.Year == year && a.CalendarWeek >= weekFrom && a.CalendarWeek <= weekTo)
-            .Where(a => projects.Select(p => p.Id).Contains(a.ProjectId))
+            .Where(a => projectIds.Contains(a.ProjectId))
             .ToListAsync();
 
         var budgets = await _db.ProjectWeeklyBudgets
+            .AsNoTracking()
             .Where(b => b.Year == year && b.CalendarWeek >= weekFrom && b.CalendarWeek <= weekTo)
-            .Where(b => projects.Select(p => p.Id).Contains(b.ProjectId))
+            .Where(b => projectIds.Contains(b.ProjectId))
             .ToListAsync();
+
+        // O(1) dictionary lookups
+        var allocByKey = allocations
+            .GroupBy(a => (a.ProjectId, a.CalendarWeek))
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var budgetByKey = budgets
+            .ToDictionary(b => (b.ProjectId, b.CalendarWeek), b => b.BudgetedHours);
 
         var result = new List<ProjectWeekOverviewDto>();
 
         foreach (var proj in projects)
         {
-            var projAllocations = allocations.Where(a => a.ProjectId == proj.Id).ToList();
-            var projBudgets = budgets.Where(b => b.ProjectId == proj.Id).ToList();
             var weeks = new List<ProjectWeekSummaryDto>();
 
             for (int w = weekFrom; w <= weekTo; w++)
             {
-                var weekAllocations = projAllocations.Where(a => a.CalendarWeek == w).ToList();
-                var weekBudget = projBudgets.FirstOrDefault(b => b.CalendarWeek == w);
+                allocByKey.TryGetValue((proj.Id, w), out var weekAllocations);
+                weekAllocations ??= [];
+                budgetByKey.TryGetValue((proj.Id, w), out var budgetedHours);
+
                 var allocatedHours = weekAllocations.Sum(a => a.PlannedHours);
-                var budgetedHours = weekBudget?.BudgetedHours ?? 0;
                 var percentage = budgetedHours > 0 ? allocatedHours / budgetedHours * 100 : 0;
                 var status = budgetedHours <= 0 ? "none" : percentage > 100 ? "over" : percentage >= 80 ? "optimal" : "under";
 
@@ -184,13 +226,25 @@ public class PlanningService : IPlanningService
 
     public async Task UpsertProjectBudgetsAsync(List<ProjectWeeklyBudgetUpsertDto> budgets)
     {
+        if (budgets.Count == 0) return;
+
+        var projectIds = budgets.Select(d => d.ProjectId).Distinct().ToList();
+        var years = budgets.Select(d => d.Year).Distinct().ToList();
+        var calendarWeeks = budgets.Select(d => d.CalendarWeek).Distinct().ToList();
+
+        var existingList = await _db.ProjectWeeklyBudgets
+            .Where(b => projectIds.Contains(b.ProjectId)
+                     && years.Contains(b.Year)
+                     && calendarWeeks.Contains(b.CalendarWeek))
+            .ToListAsync();
+
+        var existingMap = existingList.ToDictionary(
+            b => (b.ProjectId, b.CalendarWeek, b.Year));
+
         await using var tx = await _db.Database.BeginTransactionAsync();
         foreach (var dto in budgets)
         {
-            var existing = await _db.ProjectWeeklyBudgets.FirstOrDefaultAsync(b =>
-                b.ProjectId == dto.ProjectId &&
-                b.CalendarWeek == dto.CalendarWeek &&
-                b.Year == dto.Year);
+            existingMap.TryGetValue((dto.ProjectId, dto.CalendarWeek, dto.Year), out var existing);
 
             if (dto.BudgetedHours <= 0)
             {

@@ -1,4 +1,5 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -135,9 +136,11 @@ import { getISOWeek, getWeekStart, formatShortDate } from '../../../core/utils/w
     .budget-input { width: 60px; text-align: center; border: 1px solid #ccc; border-radius: 4px; padding: 2px 4px; font-size: 13px; }
     .budget-input:focus { outline: none; border-color: #1976d2; }
     .allocated-row { font-size: 12px; color: #666; }
-  `]
+  `],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ProjectPlanningComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
   private planningService = inject(PlanningService);
   private snackBar = inject(MatSnackBar);
 
@@ -173,7 +176,8 @@ export class ProjectPlanningComponent implements OnInit {
       weekFrom: this.weekFrom,
       weekTo: this.weekTo
     }).pipe(
-      finalize(() => this.loading = false)
+      finalize(() => this.loading = false),
+      takeUntilDestroyed(this.destroyRef)
     ).subscribe(data => this.overview = data);
   }
 
@@ -226,7 +230,7 @@ export class ProjectPlanningComponent implements OnInit {
 
   save() {
     const budgets = Array.from(this.pendingChanges.values());
-    this.planningService.upsertProjectBudgets(budgets).subscribe(() => {
+    this.planningService.upsertProjectBudgets(budgets).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.snackBar.open('Project budgets saved', 'OK', { duration: 3000 });
       this.loadData();
     });

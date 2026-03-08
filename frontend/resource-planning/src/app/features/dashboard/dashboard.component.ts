@@ -1,4 +1,5 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -214,9 +215,11 @@ import { getISOWeek } from '../../core/utils/week.utils';
     .summary-item.ok mat-icon { color: #43a047; }
     .summary-item .count { font-size: 24px; font-weight: 600; color: #1a2a3a; }
     .summary-item .label { font-size: 13px; color: #666; }
-  `]
+  `],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DashboardComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
   private employeeService = inject(EmployeeService);
   private departmentService = inject(DepartmentService);
   private projectService = inject(ProjectService);
@@ -262,7 +265,8 @@ export class DashboardComponent implements OnInit {
         weekTo: this.currentWeek + 3
       })
     ]).pipe(
-      finalize(() => this.loading = false)
+      finalize(() => this.loading = false),
+      takeUntilDestroyed(this.destroyRef)
     ).subscribe(([employees, departments, projects, overview, projectOverview]) => {
       this.employeeCount = employees.length;
       this.departmentCount = departments.length;

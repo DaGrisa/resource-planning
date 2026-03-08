@@ -1,4 +1,5 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
@@ -94,9 +95,11 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
   `,
   styles: [`
     .full-width { margin-top: 16px; }
-  `]
+  `],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EmployeeListComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
   private employeeService = inject(EmployeeService);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
@@ -114,7 +117,8 @@ export class EmployeeListComponent implements OnInit {
   loadEmployees() {
     this.loading = true;
     this.employeeService.getAll(!this.showInactive).pipe(
-      finalize(() => this.loading = false)
+      finalize(() => this.loading = false),
+      takeUntilDestroyed(this.destroyRef)
     ).subscribe(data => this.employees = data);
   }
 

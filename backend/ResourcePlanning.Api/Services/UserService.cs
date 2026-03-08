@@ -14,6 +14,7 @@ public class UserService : IUserService
     public async Task<List<UserDto>> GetAllAsync()
     {
         return await _db.Users
+            .AsNoTracking()
             .Include(u => u.Roles)
             .Include(u => u.Employee)
             .OrderBy(u => u.Username)
@@ -24,6 +25,7 @@ public class UserService : IUserService
     public async Task<UserDto?> GetByIdAsync(int id)
     {
         var user = await _db.Users
+            .AsNoTracking()
             .Include(u => u.Roles)
             .Include(u => u.Employee)
             .FirstOrDefaultAsync(u => u.Id == id);
@@ -34,29 +36,27 @@ public class UserService : IUserService
     public async Task<UserDto> CreateAsync(UserCreateDto dto)
     {
         await using var tx = await _db.Database.BeginTransactionAsync();
+
+        // Attach roles to the entity before the first save — EF Core resolves the FK chain
+        var roles = dto.Roles?
+            .Select(r => Enum.TryParse<Role>(r, out var role) ? new UserRole { Role = role } : null)
+            .Where(r => r != null)
+            .Cast<UserRole>()
+            .ToList() ?? [];
+
         var user = new User
         {
             Username = dto.Username,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             DisplayName = dto.DisplayName,
-            EmployeeId = dto.EmployeeId
+            EmployeeId = dto.EmployeeId,
+            Roles = roles
         };
 
         _db.Users.Add(user);
-        await _db.SaveChangesAsync();
-
-        if (dto.Roles?.Length > 0)
-        {
-            foreach (var roleName in dto.Roles)
-            {
-                if (Enum.TryParse<Role>(roleName, out var role))
-                    _db.UserRoles.Add(new UserRole { UserId = user.Id, Role = role });
-            }
-            await _db.SaveChangesAsync();
-        }
-
+        await _db.SaveChangesAsync(); // single round-trip for user + roles
         await tx.CommitAsync();
-        await _db.Entry(user).Collection(u => u.Roles).LoadAsync();
+
         if (user.EmployeeId.HasValue)
             await _db.Entry(user).Reference(u => u.Employee).LoadAsync();
 

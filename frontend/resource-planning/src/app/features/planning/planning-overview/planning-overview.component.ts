@@ -1,4 +1,5 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -113,9 +114,11 @@ import { getISOWeek, getWeekStart, formatShortDate } from '../../../core/utils/w
   `,
   styles: [`
     .pct { font-size: 11px; color: #666; }
-  `]
+  `],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PlanningOverviewComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
   private planningService = inject(PlanningService);
   private departmentService = inject(DepartmentService);
 
@@ -137,7 +140,7 @@ export class PlanningOverviewComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.departmentService.getAll().subscribe(d => this.departments = d);
+    this.departmentService.getAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => this.departments = d);
     this.load();
   }
 
@@ -149,7 +152,8 @@ export class PlanningOverviewComponent implements OnInit {
       weekTo: this.weekTo,
       departmentId: this.departmentId
     }).pipe(
-      finalize(() => this.loading = false)
+      finalize(() => this.loading = false),
+      takeUntilDestroyed(this.destroyRef)
     ).subscribe(data => this.overview = data);
   }
 

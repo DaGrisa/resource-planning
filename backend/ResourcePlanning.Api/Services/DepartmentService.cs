@@ -14,6 +14,7 @@ public class DepartmentService : IDepartmentService
     public async Task<List<DepartmentDto>> GetAllAsync()
     {
         return await _db.Departments
+            .AsNoTracking()
             .Include(d => d.LeadManager)
             .OrderBy(d => d.Name)
             .Select(d => new DepartmentDto(
@@ -28,6 +29,7 @@ public class DepartmentService : IDepartmentService
     public async Task<DepartmentDetailDto?> GetByIdAsync(int id)
     {
         var d = await _db.Departments
+            .AsNoTracking()
             .Include(d => d.LeadManager)
             .Include(d => d.Managers).ThenInclude(m => m.Employee)
             .Include(d => d.Employees)

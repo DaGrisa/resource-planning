@@ -24,6 +24,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Employee>(e =>
         {
             e.HasIndex(x => x.Email).IsUnique();
+            e.HasIndex(x => x.IsActive);
             e.Property(x => x.WeeklyHours).HasPrecision(5, 2);
             e.HasOne(x => x.Department)
                 .WithMany(d => d.Employees)
@@ -58,6 +59,7 @@ public class AppDbContext : DbContext
         // Project
         modelBuilder.Entity<Project>(e =>
         {
+            e.HasIndex(x => x.IsActive);
             e.Property(x => x.ProjectType).HasConversion<string>();
             e.HasOne(x => x.ProjectLead)
                 .WithMany()

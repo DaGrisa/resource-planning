@@ -1,4 +1,5 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -129,9 +130,11 @@ interface AbsenceGridRow {
   styles: [`
     .has-absence { background-color: #e3f2fd; font-weight: 500; }
     .has-absence:hover { background-color: #bbdefb; }
-  `]
+  `],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AbsenceListComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
   private absenceService = inject(AbsenceService);
   private employeeService = inject(EmployeeService);
   private departmentService = inject(DepartmentService);
@@ -160,8 +163,8 @@ export class AbsenceListComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.departmentService.getAll().subscribe(d => this.departments = d);
-    this.employeeService.getAll().subscribe(e => this.employees = e);
+    this.departmentService.getAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => this.departments = d);
+    this.employeeService.getAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(e => this.employees = e);
     this.load();
   }
 
@@ -174,7 +177,8 @@ export class AbsenceListComponent implements OnInit {
       employeeId: this.employeeId,
       departmentId: this.departmentId
     }).pipe(
-      finalize(() => this.loading = false)
+      finalize(() => this.loading = false),
+      takeUntilDestroyed(this.destroyRef)
     ).subscribe(data => {
       this.absences = data;
       this.buildGrid();
