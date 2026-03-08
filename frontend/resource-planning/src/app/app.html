@@ -1,0 +1,56 @@
+@if (authService.isLoggedIn()) {
+<mat-sidenav-container class="app-container">
+  <mat-sidenav #sidenav
+    [mode]="isTablet ? 'over' : 'side'"
+    [opened]="!isTablet"
+    class="sidenav">
+    <div class="sidenav-wrapper">
+      <div class="sidenav-header">
+        <img src="logo.svg" alt="Planly" class="logo-icon" />
+        <span class="logo-text">Planly</span>
+      </div>
+      <mat-nav-list>
+        @for (group of navGroups(); track group.label) {
+          @if (group.label) {
+            <div class="nav-group-label">{{ group.label }}</div>
+          }
+          @for (item of group.items; track item.path) {
+            <a mat-list-item [routerLink]="item.path" routerLinkActive="active-link" [routerLinkActiveOptions]="{ exact: item.path === '/planning' }" (click)="onNavClick()">
+              <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+              <span matListItemTitle>{{ item.label }}</span>
+            </a>
+          }
+        }
+      </mat-nav-list>
+      <div class="sidenav-footer">
+        <mat-divider></mat-divider>
+        <div class="user-info">
+          <mat-icon>account_circle</mat-icon>
+          <span class="user-name">{{ authService.currentUser()?.displayName }}</span>
+        </div>
+        <button mat-button class="logout-button" (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          <span>Sign Out</span>
+        </button>
+      </div>
+    </div>
+  </mat-sidenav>
+
+  <mat-sidenav-content class="content">
+    @if (isTablet) {
+      <mat-toolbar class="app-toolbar">
+        <button mat-icon-button (click)="sidenav.toggle()">
+          <mat-icon>menu</mat-icon>
+        </button>
+        <img src="logo.svg" alt="Planly" class="toolbar-logo" />
+        <span class="toolbar-title">Planly</span>
+      </mat-toolbar>
+    }
+    <div class="page-content">
+      <router-outlet />
+    </div>
+  </mat-sidenav-content>
+</mat-sidenav-container>
+} @else {
+  <router-outlet />
+}

@@ -1,0 +1,238 @@
+@use '@angular/material' as mat;
+
+html {
+  height: 100%;
+  @include mat.theme((
+    color: (
+      primary: mat.$blue-palette,
+      tertiary: mat.$cyan-palette,
+    ),
+    typography: Roboto,
+    density: 0,
+  ));
+}
+
+body {
+  color-scheme: light;
+  background-color: #f5f7fa;
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+  margin: 0;
+  height: 100%;
+}
+
+// Global page header pattern used by all feature pages
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+
+  h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: #1a2a3a;
+  }
+}
+
+// Shared empty state style
+.empty-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: #78909c;
+  font-size: 15px;
+  background: white;
+  border-radius: 12px;
+  border: 1px dashed #cfd8dc;
+  margin-top: 16px;
+}
+
+// Shared spinner style
+.spinner {
+  display: flex;
+  justify-content: center;
+  padding: 32px;
+}
+
+// Better looking tables
+.full-width {
+  width: 100%;
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+
+// Hide horizontal scrollbar in sidenav
+.sidenav .mat-drawer-inner-container {
+  overflow-x: hidden;
+}
+
+// Filter bar used across list/grid pages
+.filters {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+// Header action buttons (save, discard, bulk, etc.)
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+// Scrollable wrapper for planning grids
+.grid-container {
+  overflow-x: auto;
+  border-radius: 8px;
+  background: white;
+}
+
+// Unified planning table
+.planning-table {
+  border-collapse: collapse;
+  min-width: 100%;
+
+  th, td {
+    border: 1px solid #e0e7ef;
+    padding: 8px;
+    text-align: center;
+  }
+
+  thead th {
+    background: #fafafa;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+}
+
+// Sticky first column (employee or project)
+.first-col {
+  text-align: left !important;
+  width: 180px;
+  position: sticky;
+  left: 0;
+  background: white;
+  z-index: 1;
+}
+
+.first-col-name {
+  font-weight: 500;
+}
+
+.first-col-sub {
+  font-size: 12px;
+  color: #666;
+}
+
+// Week column styles
+.week-col {
+  min-width: 70px;
+}
+
+.week-date {
+  font-size: 11px;
+  color: #888;
+  font-weight: 400;
+}
+
+.week-cell {
+  font-size: 13px;
+}
+
+.week-cell-interactive {
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    filter: brightness(0.95);
+  }
+}
+
+// Status color coding
+.status-empty {
+  background-color: #f5f5f5;
+}
+
+.status-none {
+  background-color: #f5f5f5;
+}
+
+.status-under {
+  background-color: #fff9c4;
+}
+
+.status-optimal {
+  background-color: #c8e6c9;
+}
+
+.status-over {
+  background-color: #ffcdd2;
+}
+
+// Legend for color-coded grids
+.legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.legend .dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  border: 1px solid #e0e0e0;
+  display: inline-block;
+}
+
+// Fixed bottom banner for unsaved changes
+.dirty-banner {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ff9800;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+
+// Form layout
+.form-container {
+  display: flex;
+  flex-direction: column;
+  max-width: 500px;
+  gap: 8px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+// Inactive text
+.inactive {
+  color: #999;
+}
+
+// Responsive helpers
+@media (max-width: 1024px) {
+  .page-header h1 {
+    font-size: 1.25rem;
+  }
+}
