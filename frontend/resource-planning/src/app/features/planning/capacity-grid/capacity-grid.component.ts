@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -153,6 +153,7 @@ export class CapacityGridComponent implements OnInit {
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
   authService = inject(AuthService);
+  private cdr = inject(ChangeDetectorRef);
 
   overview: EmployeeWeekOverview[] = [];
   departments: Department[] = [];
@@ -177,8 +178,8 @@ export class CapacityGridComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.departmentService.getAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => this.departments = d);
-    this.projectService.getAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(p => this.projects = p);
+    this.departmentService.getAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => { this.departments = d; this.cdr.markForCheck(); });
+    this.projectService.getAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(p => { this.projects = p; this.cdr.markForCheck(); });
     this.loadData();
   }
 
@@ -194,7 +195,7 @@ export class CapacityGridComponent implements OnInit {
     }).pipe(
       finalize(() => this.loading = false),
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe(data => this.overview = data);
+    ).subscribe(data => { this.overview = data; this.cdr.markForCheck(); });
   }
 
   onFromDateChange(event: any) {

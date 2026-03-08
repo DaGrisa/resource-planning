@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -141,6 +141,7 @@ export class AbsenceListComponent implements OnInit {
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
   authService = inject(AuthService);
+  private cdr = inject(ChangeDetectorRef);
 
   absences: Absence[] = [];
   employees: Employee[] = [];
@@ -163,8 +164,8 @@ export class AbsenceListComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.departmentService.getAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => this.departments = d);
-    this.employeeService.getAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(e => this.employees = e);
+    this.departmentService.getAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => { this.departments = d; this.cdr.markForCheck(); });
+    this.employeeService.getAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(e => { this.employees = e; this.cdr.markForCheck(); });
     this.load();
   }
 
@@ -182,6 +183,7 @@ export class AbsenceListComponent implements OnInit {
     ).subscribe(data => {
       this.absences = data;
       this.buildGrid();
+      this.cdr.markForCheck();
     });
   }
 

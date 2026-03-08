@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -119,6 +119,7 @@ export class ProjectListComponent implements OnInit {
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
   authService = inject(AuthService);
+  private cdr = inject(ChangeDetectorRef);
 
   projects: Project[] = [];
   loading = false;
@@ -133,7 +134,7 @@ export class ProjectListComponent implements OnInit {
     this.projectService.getAll(!this.showInactive, this.typeFilter).pipe(
       finalize(() => this.loading = false),
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe(d => this.projects = d);
+    ).subscribe(d => { this.projects = d; this.cdr.markForCheck(); });
   }
 
   confirmDelete(project: Project) {

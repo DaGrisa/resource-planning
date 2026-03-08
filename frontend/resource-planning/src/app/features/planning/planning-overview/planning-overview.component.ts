@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -121,6 +121,7 @@ export class PlanningOverviewComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
   private planningService = inject(PlanningService);
   private departmentService = inject(DepartmentService);
+  private cdr = inject(ChangeDetectorRef);
 
   overview: EmployeeWeekOverview[] = [];
   departments: Department[] = [];
@@ -140,7 +141,7 @@ export class PlanningOverviewComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.departmentService.getAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => this.departments = d);
+    this.departmentService.getAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => { this.departments = d; this.cdr.markForCheck(); });
     this.load();
   }
 
@@ -154,7 +155,7 @@ export class PlanningOverviewComponent implements OnInit {
     }).pipe(
       finalize(() => this.loading = false),
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe(data => this.overview = data);
+    ).subscribe(data => { this.overview = data; this.cdr.markForCheck(); });
   }
 
   onFromDateChange(event: any) {

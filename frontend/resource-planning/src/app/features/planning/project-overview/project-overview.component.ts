@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -122,6 +122,7 @@ import { getISOWeek, getWeekStart, formatShortDate } from '../../../core/utils/w
 export class ProjectOverviewComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
   private planningService = inject(PlanningService);
+  private cdr = inject(ChangeDetectorRef);
 
   overview: ProjectWeekOverview[] = [];
   loading = false;
@@ -151,7 +152,7 @@ export class ProjectOverviewComponent implements OnInit {
     }).pipe(
       finalize(() => this.loading = false),
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe(data => this.overview = data);
+    ).subscribe(data => { this.overview = data; this.cdr.markForCheck(); });
   }
 
   onFromDateChange(event: any) {

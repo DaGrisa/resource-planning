@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -177,6 +177,7 @@ export class MyPlanningComponent implements OnInit {
   private planningService = inject(PlanningService);
   private employeeService = inject(EmployeeService);
   private authService = inject(AuthService);
+  private cdr = inject(ChangeDetectorRef);
 
   employees: Employee[] = [];
   selectedEmployeeId?: number;
@@ -223,7 +224,7 @@ export class MyPlanningComponent implements OnInit {
         this.load();
       }
     } else {
-      this.employeeService.getAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(emps => this.employees = emps);
+      this.employeeService.getAll().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(emps => { this.employees = emps; this.cdr.markForCheck(); });
     }
   }
 
@@ -234,7 +235,7 @@ export class MyPlanningComponent implements OnInit {
     this.planningService
       .getEmployeeAllocations(this.selectedEmployeeId, this.year, this.weekFrom, this.weekTo)
       .pipe(finalize(() => this.loading = false), takeUntilDestroyed(this.destroyRef))
-      .subscribe(data => this.overview = data);
+      .subscribe(data => { this.overview = data; this.cdr.markForCheck(); });
   }
 
   onFromDateChange(event: any) {

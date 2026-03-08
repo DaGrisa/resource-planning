@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -224,6 +224,7 @@ export class DashboardComponent implements OnInit {
   private departmentService = inject(DepartmentService);
   private projectService = inject(ProjectService);
   private planningService = inject(PlanningService);
+  private cdr = inject(ChangeDetectorRef);
 
   employeeCount = 0;
   departmentCount = 0;
@@ -276,6 +277,7 @@ export class DashboardComponent implements OnInit {
       this.allEmployeeOverview = overview;
       this.allProjectOverview = projectOverview;
       this.applyFilters();
+      this.cdr.markForCheck();
     });
   }
 

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -104,6 +104,7 @@ export class EmployeeListComponent implements OnInit {
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
   authService = inject(AuthService);
+  private cdr = inject(ChangeDetectorRef);
 
   employees: Employee[] = [];
   loading = false;
@@ -119,7 +120,7 @@ export class EmployeeListComponent implements OnInit {
     this.employeeService.getAll(!this.showInactive).pipe(
       finalize(() => this.loading = false),
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe(data => this.employees = data);
+    ).subscribe(data => { this.employees = data; this.cdr.markForCheck(); });
   }
 
   confirmDelete(employee: Employee) {

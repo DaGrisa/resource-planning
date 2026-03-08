@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -82,6 +82,7 @@ export class DepartmentListComponent implements OnInit {
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
   authService = inject(AuthService);
+  private cdr = inject(ChangeDetectorRef);
 
   departments: Department[] = [];
   loading = false;
@@ -96,7 +97,7 @@ export class DepartmentListComponent implements OnInit {
     this.departmentService.getAll().pipe(
       finalize(() => this.loading = false),
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe(data => this.departments = data);
+    ).subscribe(data => { this.departments = data; this.cdr.markForCheck(); });
   }
 
   confirmDelete(dept: Department) {
