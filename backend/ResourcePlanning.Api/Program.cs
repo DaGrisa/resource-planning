@@ -3,6 +3,7 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.IdentityModel.Tokens;
 using ResourcePlanning.Api.Data;
 using ResourcePlanning.Api.Middleware;
@@ -30,12 +31,14 @@ builder.Services.AddDbContext<AppDbContext>(options =>
             builder.Configuration.GetConnectionString("SqlServer"),
             sql => sql.MigrationsHistoryTable("__EFMigrationsHistory")
                       .MigrationsAssembly(typeof(Program).Assembly.GetName().Name)
-                      .EnableRetryOnFailure(3));
+                      .EnableRetryOnFailure(3))
+               .ReplaceService<IMigrationsAssembly, SqlServerMigrationsAssembly>();
     }
     else
     {
         options.UseSqlite(
-            builder.Configuration.GetConnectionString("Sqlite") ?? "Data Source=resourceplanning.db");
+            builder.Configuration.GetConnectionString("Sqlite") ?? "Data Source=resourceplanning.db")
+               .ReplaceService<IMigrationsAssembly, SqliteMigrationsAssembly>();
     }
 });
 
