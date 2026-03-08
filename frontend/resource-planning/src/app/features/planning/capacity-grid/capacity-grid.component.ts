@@ -36,7 +36,7 @@ import { getISOWeek, getWeekStart, formatShortDate } from '../../../core/utils/w
   ],
   template: `
     <div class="page-header">
-      <h1>Capacity Planning</h1>
+      <h1>Employee Planning</h1>
       <div class="header-actions">
         <button mat-stroked-button (click)="openBulkAllocation()">
           <mat-icon>date_range</mat-icon> Bulk Plan

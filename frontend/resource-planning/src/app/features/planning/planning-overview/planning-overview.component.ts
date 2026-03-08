@@ -23,7 +23,7 @@ import { getISOWeek, getWeekStart, formatShortDate } from '../../../core/utils/w
   imports: [CommonModule, FormsModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatSlideToggleModule, MatTooltipModule, MatProgressSpinnerModule, MatDatepickerModule, MatNativeDateModule],
   template: `
     <div class="page-header">
-      <h1>Planning Overview</h1>
+      <h1>Employee Overview</h1>
     </div>
 
     <div class="filters">
