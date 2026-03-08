@@ -7,6 +7,7 @@
 ![Angular](https://img.shields.io/badge/Angular-21-DD0031?logo=angular&logoColor=white)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)
+![SQL Server](https://img.shields.io/badge/SQL%20Server-CC2927?logo=microsoftsqlserver&logoColor=white)
 
 </div>
 
@@ -29,7 +30,7 @@ A web application for planning and monitoring employee capacity across projects 
 
 - **Frontend**: Angular 21 with Angular Material
 - **Backend**: .NET 10 Web API with Entity Framework Core
-- **Database**: SQLite (development)
+- **Database**: SQLite (development) / SQL Server (production)
 
 ## Prerequisites
 
@@ -118,15 +119,30 @@ In `appsettings.Development.json` this is set to `true` so a local development e
 
 ## Database
 
-The application uses **SQLite** with **Entity Framework Core** (code-first).
+The application uses **Entity Framework Core** (code-first) and supports two database providers:
 
-- **File location**: `backend/ResourcePlanning.Api/resourceplanning.db` (created automatically on first run)
-- **Connection string**: Configured via `ConnectionStrings:Sqlite` (dev) or `ConnectionStrings:SqlServer` (prod) in `appsettings.json`
-- **Auto-migration**: Pending migrations are applied automatically on startup
+- **SQLite** (development) — file at `backend/ResourcePlanning.Api/resourceplanning.db`, created automatically on first run
+- **SQL Server** (production) — connection string configured via `ConnectionStrings:SqlServer` in `appsettings.json`
+- **Auto-migration**: Pending migrations are applied automatically on startup for both providers
+
+### Local secrets (.env)
+
+Sensitive values are loaded from a `.env` file in the repository root (gitignored). Copy `.env.example` and fill in your values:
+
+```bash
+cp .env.example .env
+```
+
+```dotenv
+# .env — never committed
+Jwt__Key=your-strong-secret-key-min-32-chars
+```
+
+Double-underscore maps to nested config: `Jwt__Key` → `Jwt:Key`.
 
 ### Configuration
 
-Before running, set the following values in `backend/ResourcePlanning.Api/appsettings.json`:
+Before deploying, set the following values in `backend/ResourcePlanning.Api/appsettings.json`:
 
 ```json
 "Jwt": {
