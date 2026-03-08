@@ -72,7 +72,7 @@ Four roles defined as an enum (`Role.cs` / `auth.model.ts`):
 | Role | Access |
 |---|---|
 | `Admin` | Full system access; manage users and all data |
-| `DepartmentManager` | Manage assigned departments, employees, and all projects |
+| `DepartmentManager` | Manage assigned departments, employees, and projects where they are project lead or have team members from their managed departments |
 | `ProjectManager` | Manage projects they lead (as ProjectLead) |
 | `Employee` | View own data only |
 
@@ -105,7 +105,7 @@ Four roles defined as an enum (`Role.cs` / `auth.model.ts`):
 
 ## Architecture Patterns
 - **Backend services**: Interface + implementation, registered as Scoped in Program.cs
-- **Frontend components**: Standalone with lazy-loaded routes in app.routes.ts
+- **Frontend components**: Standalone with lazy-loaded routes in app.routes.ts, all with `ChangeDetectionStrategy.OnPush`
 - **Soft-delete**: Employees and Projects use IsActive flag (not removed from DB)
 - **Hard-delete**: Departments only deletable when no active employees remain
 - **Capacity allocations**: Upsert pattern — setting PlannedHours to 0 deletes the record
@@ -113,6 +113,10 @@ Four roles defined as an enum (`Role.cs` / `auth.model.ts`):
 - **Percentages**: Computed on-the-fly as `PlannedHours / Employee.WeeklyHours * 100`
 - **Error handling**: Backend middleware catches unhandled exceptions; frontend httpInterceptor shows snackbar
 - **JSON enums**: ProjectType serialized as strings via JsonStringEnumConverter
+- **Read queries**: All use `.AsNoTracking()` — entity tracking only on write paths
+- **Batch upserts**: Load all potentially matching records in one query before the loop, then match via dictionary for O(1) lookup (PlanningService, AbsenceService)
+- **Planning overview**: Uses grouped dictionaries after a single DB fetch — O(1) per employee/week cell instead of repeated LINQ scans
+- **Subscription cleanup**: All Angular components use `takeUntilDestroyed(destroyRef)` on HTTP subscriptions to cancel in-flight requests on component destroy
 
 ## Database
 - Provider selected via `Database:Provider` in appsettings (`Sqlite` | `SqlServer`)
@@ -123,6 +127,7 @@ Four roles defined as an enum (`Role.cs` / `auth.model.ts`):
 - `DesignTimeDbContextFactory` reads `DB_PROVIDER` env var to pick provider during migration generation
 - Auto-migrates and seeds on startup in Development mode
 - Seed data: 6 employees, 3 departments, 4 projects, 1 admin user; allocations/budgets/absences for 10 weeks starting from first-startup date (dynamic, handles year rollover)
+- Indexes: unique on Email, Username, Department.Name; composite unique on allocation/absence/budget keys; `IsActive` indexes on Employee and Project for soft-delete filter performance
 
 ## API Endpoints
 - `POST /api/auth/login` — [AllowAnonymous] returns `{ token, user }`
@@ -165,8 +170,19 @@ cd frontend/resource-planning && npm test
 - **Frontend component tests**: `fakeAsync`/`tick` is NOT available (no zone.js/testing) — use async/await with `fixture.whenStable()` if needed
 - Test files: `*.spec.ts` (frontend), `*Tests.cs` (backend)
 
+## Security
+- **JWT key validation**: Startup throws if `Jwt:Key` is missing or still the placeholder value
+- **Rate limiting**: Login endpoint limited to 10 requests/min per IP (HTTP 429) via `[EnableRateLimiting("login")]`
+- **CORS**: Origins from `Cors:AllowedOrigins` config; explicit methods (GET/POST/PUT/DELETE/OPTIONS) and headers (Content-Type/Authorization)
+- **Security headers**: `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`, `Referrer-Policy` on all responses; `Strict-Transport-Security` on HTTPS only
+- **Password policy**: Minimum 8 characters enforced via `[MinLength(8)]` on create/change-password DTOs
+- **Admin password**: Read from `Seed:AdminPassword` config (never hardcoded); change placeholder before deploying
+- **DepartmentManager access**: Scoped — can only manage projects where they are project lead or have team members from their managed departments
+- **Transactions**: All multi-step write operations (upserts, SetTeam, SetManagers, user create/update) wrapped in explicit transactions
+
 ## Environment Config
 - Backend port: 5113 (configured in Properties/launchSettings.json)
 - Frontend API URL: `src/environments/environment.ts` → `http://localhost:5113/api`
-- CORS: allows `http://localhost:4200`
+- CORS: `Cors:AllowedOrigins` in appsettings — development default `["http://localhost:4200"]`
+- `Seed:AdminPassword`: development default `admin123`; set a strong value in production
 - Angular bundle budget: 1MB warning / 1MB error (angular.json)

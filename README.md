@@ -121,18 +121,26 @@ In `appsettings.Development.json` this is set to `true` so a local development e
 The application uses **SQLite** with **Entity Framework Core** (code-first).
 
 - **File location**: `backend/ResourcePlanning.Api/resourceplanning.db` (created automatically on first run)
-- **Connection string**: Configured via `ConnectionStrings:DefaultConnection` in `appsettings.json`
+- **Connection string**: Configured via `ConnectionStrings:Sqlite` (dev) or `ConnectionStrings:SqlServer` (prod) in `appsettings.json`
 - **Auto-migration**: Pending migrations are applied automatically on startup
 
 ### Configuration
 
-Before running, set a strong JWT secret key in `backend/ResourcePlanning.Api/appsettings.json`:
+Before running, set the following values in `backend/ResourcePlanning.Api/appsettings.json`:
 
 ```json
 "Jwt": {
   "Key": "REPLACE_WITH_A_STRONG_SECRET_KEY_MIN_32_CHARS"
+},
+"Seed": {
+  "AdminPassword": "CHANGE_THIS_ADMIN_PASSWORD"
+},
+"Cors": {
+  "AllowedOrigins": [ "https://your-frontend-domain.com" ]
 }
 ```
+
+The application will refuse to start if `Jwt:Key` is still the placeholder value.
 
 ### Database providers
 
@@ -165,12 +173,6 @@ dotnet ef migrations add <Name> --output-dir Data/Migrations
 $env:DB_PROVIDER="SqlServer"
 dotnet ef migrations add <Name> --output-dir Data/MigrationsSqlServer
 $env:DB_PROVIDER=""
-```
-
-```bash
-cd backend/ResourcePlanning.Api
-dotnet ef migrations add <MigrationName> --output-dir Data/Migrations
-dotnet ef database update
 ```
 
 ## Project Structure
