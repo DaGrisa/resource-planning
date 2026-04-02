@@ -4,21 +4,13 @@ using ResourcePlanning.Api.Services;
 
 namespace ResourcePlanning.Tests;
 
-public class ProjectServiceTests : IDisposable
+public class ProjectServiceTests : ServiceTestBase
 {
-    private readonly TestDbContextFactory _factory;
-
-    public ProjectServiceTests()
-    {
-        _factory = new TestDbContextFactory();
-    }
-
-    public void Dispose() => _factory.Dispose();
 
     [Fact]
     public async Task CreateAsync_ShouldCreateProject()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new ProjectService(db);
 
         var result = await service.CreateAsync(new ProjectCreateDto("Portal", ProjectType.Customer));
@@ -31,7 +23,7 @@ public class ProjectServiceTests : IDisposable
     [Fact]
     public async Task GetAllAsync_ShouldFilterByType()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new ProjectService(db);
 
         await service.CreateAsync(new ProjectCreateDto("A", ProjectType.Customer));
@@ -46,7 +38,7 @@ public class ProjectServiceTests : IDisposable
     [Fact]
     public async Task DeleteAsync_ShouldSoftDelete()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new ProjectService(db);
 
         var created = await service.CreateAsync(new ProjectCreateDto("Test", ProjectType.Customer));
@@ -63,7 +55,7 @@ public class ProjectServiceTests : IDisposable
     [Fact]
     public async Task SetTeamAsync_ShouldReplaceTeam()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var projectService = new ProjectService(db);
         var empService = new EmployeeService(db);
 
@@ -83,7 +75,7 @@ public class ProjectServiceTests : IDisposable
     [Fact]
     public async Task GetAllAsync_ShouldReturnOnlyActive_ByDefault()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new ProjectService(db);
 
         await service.CreateAsync(new ProjectCreateDto("Active", ProjectType.Customer));
@@ -94,3 +86,5 @@ public class ProjectServiceTests : IDisposable
         Assert.Single(result);
     }
 }
+
+

@@ -105,7 +105,7 @@ In `appsettings.Development.json` this is set to `true` so a local development e
 - **Capacity Planning Grid**: Visual weekly planning grid with color-coded utilization (green = 80–100%, orange = under, red = over)
 - **Project Planning**: Plan capacity from the project perspective with weekly budgets
 - **Planning Overview**: Read-only employee utilization view across weeks
-- **Project Overview**: Read-only project utilization view across weeks
+- **Project Overview**: Read-only project utilization view across weeks, plus monthly planned/budget view across all projects with workday-based split for cross-month weeks
 - **Absence Management**: Track employee absences per calendar week and manage single-day holidays that apply to all employees (auto-counted as 1/5 weekly hours)
 
 ## Roles

@@ -15,6 +15,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { UserService } from '../../../core/services/user.service';
 import { EmployeeService } from '../../../core/services/employee.service';
 import { Employee, Role } from '../../../core/models';
+import { saveAndNavigate } from '../../../shared/utils/save-action.util';
 
 @Component({
   selector: 'app-user-form',
@@ -156,31 +157,27 @@ export class UserFormComponent implements OnInit {
   onSubmit() {
     this.saving = true;
     if (this.isEdit) {
-      this.userService.update(this.userId!, {
+      saveAndNavigate(this.userService.update(this.userId!, {
         displayName: this.displayName,
         employeeId: this.employeeId,
         isActive: this.isActive,
         roles: this.selectedRoles
-      }).subscribe({
-        next: () => {
-          this.snackBar.open('User updated', 'OK', { duration: 3000 });
-          this.router.navigate(['/users']);
-        },
-        error: () => this.saving = false
+      }), this.snackBar, this.router, {
+        successMessage: 'User updated',
+        navigateTo: '/users',
+        onError: () => this.saving = false
       });
     } else {
-      this.userService.create({
+      saveAndNavigate(this.userService.create({
         username: this.username,
         password: this.password,
         displayName: this.displayName,
         employeeId: this.employeeId,
         roles: this.selectedRoles
-      }).subscribe({
-        next: () => {
-          this.snackBar.open('User created', 'OK', { duration: 3000 });
-          this.router.navigate(['/users']);
-        },
-        error: () => this.saving = false
+      }), this.snackBar, this.router, {
+        successMessage: 'User created',
+        navigateTo: '/users',
+        onError: () => this.saving = false
       });
     }
   }

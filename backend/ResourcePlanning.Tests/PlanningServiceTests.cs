@@ -5,9 +5,8 @@ using ResourcePlanning.Api.Services;
 
 namespace ResourcePlanning.Tests;
 
-public class PlanningServiceTests : IDisposable
+public class PlanningServiceTests : ServiceTestBase
 {
-    private readonly TestDbContextFactory _factory;
     private static readonly IConfiguration DefaultConfig = new ConfigurationBuilder().Build();
 
     private static IConfiguration CreateConfig(decimal? employeeThreshold = null, decimal? projectMinThreshold = null, decimal? projectMaxThreshold = null)
@@ -26,13 +25,6 @@ public class PlanningServiceTests : IDisposable
         return new ConfigurationBuilder().AddInMemoryCollection(values).Build();
     }
 
-    public PlanningServiceTests()
-    {
-        _factory = new TestDbContextFactory();
-    }
-
-    public void Dispose() => _factory.Dispose();
-
     private async Task<(int empId, int projId)> SeedEmployeeAndProject(Api.Data.AppDbContext db)
     {
         var empService = new EmployeeService(db);
@@ -46,7 +38,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task UpsertAllocations_ShouldCreate_WhenNew()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
         var service = new PlanningService(db, DefaultConfig);
 
@@ -63,7 +55,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task UpsertAllocations_ShouldUpdate_WhenExisting()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
         var service = new PlanningService(db, DefaultConfig);
 
@@ -84,7 +76,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task UpsertAllocations_ShouldDelete_WhenZeroHours()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
         var service = new PlanningService(db, DefaultConfig);
 
@@ -104,7 +96,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task GetOverview_ShouldComputeCorrectStatus()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
         var service = new PlanningService(db, DefaultConfig);
 
@@ -123,7 +115,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task GetOverview_ShouldReturnOverStatus_WhenExceeding()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
         var projService = new ProjectService(db);
         var proj2 = await projService.CreateAsync(new ProjectCreateDto("P2", ProjectType.Internal));
@@ -144,7 +136,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task GetOverview_ShouldReturnUnderStatus_WhenBelowThreshold()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
         var service = new PlanningService(db, DefaultConfig);
 
@@ -161,7 +153,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task GetOverview_ShouldUseConfiguredEmployeeThreshold()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
         var config = CreateConfig(employeeThreshold: 90m, projectMinThreshold: 70m, projectMaxThreshold: 95m);
         var service = new PlanningService(db, config);
@@ -179,7 +171,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task GetAllocations_ShouldFilterByWeekRange()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
         var service = new PlanningService(db, DefaultConfig);
 
@@ -198,7 +190,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task GetEmployeeAllocationsAsync_ShouldReturnNull_WhenNotFound()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new PlanningService(db, DefaultConfig);
 
         var result = await service.GetEmployeeAllocationsAsync(999, 2026, 1, 10);
@@ -208,7 +200,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task UpsertProjectBudgets_ShouldCreate_WhenNew()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var (_, projId) = await SeedEmployeeAndProject(db);
         var service = new PlanningService(db, DefaultConfig);
 
@@ -225,7 +217,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task UpsertProjectBudgets_ShouldUpdate_WhenExisting()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var (_, projId) = await SeedEmployeeAndProject(db);
         var service = new PlanningService(db, DefaultConfig);
 
@@ -245,7 +237,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task UpsertProjectBudgets_ShouldDelete_WhenZeroHours()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var (_, projId) = await SeedEmployeeAndProject(db);
         var service = new PlanningService(db, DefaultConfig);
 
@@ -265,7 +257,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task GetProjectOverview_ShouldComputeOptimalStatus()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
         var config = CreateConfig(projectMinThreshold: 80m, projectMaxThreshold: 100m);
         var service = new PlanningService(db, config);
@@ -288,7 +280,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task GetProjectOverview_ShouldComputeOverStatus()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
         var service = new PlanningService(db, DefaultConfig);
 
@@ -309,7 +301,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task GetProjectOverview_ShouldReturnUnder_WhenBelowProjectMinThreshold()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
         var config = CreateConfig(projectMinThreshold: 85m, projectMaxThreshold: 95m);
         var service = new PlanningService(db, config);
@@ -330,7 +322,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task GetProjectOverview_ShouldReturnOver_WhenAboveProjectMaxThreshold()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
         var config = CreateConfig(projectMinThreshold: 85m, projectMaxThreshold: 95m);
         var service = new PlanningService(db, config);
@@ -351,7 +343,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task GetProjectOverview_ShouldUseProjectThresholds_IndependentOfEmployeeThreshold()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
         var config = CreateConfig(employeeThreshold: 95m, projectMinThreshold: 80m, projectMaxThreshold: 90m);
         var service = new PlanningService(db, config);
@@ -373,7 +365,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task GetProjectOverview_ShouldReturnOptimal_WhenPercentageEqualsMaxThreshold()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
         var config = CreateConfig(projectMinThreshold: 90m, projectMaxThreshold: 110m);
         var service = new PlanningService(db, config);
@@ -395,7 +387,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task GetProjectOverview_ShouldReturnOptimal_WhenDisplayedPercentRoundsToMaxThreshold()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
         var config = CreateConfig(projectMinThreshold: 90m, projectMaxThreshold: 110m);
         var service = new PlanningService(db, config);
@@ -417,7 +409,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task GetProjectThresholds_ShouldReturnConfiguredValues()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var config = CreateConfig(projectMinThreshold: 90m, projectMaxThreshold: 110m);
         var service = new PlanningService(db, config);
 
@@ -430,7 +422,7 @@ public class PlanningServiceTests : IDisposable
     [Fact]
     public async Task GetProjectOverview_ShouldShowEmployeeBreakdown()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var empService = new EmployeeService(db);
         var projService = new ProjectService(db);
 
@@ -454,4 +446,104 @@ public class PlanningServiceTests : IDisposable
         Assert.Equal(35m, overview[0].Weeks[0].AllocatedHours);
         Assert.Equal(2, overview[0].Weeks[0].Allocations.Count);
     }
+
+    [Fact]
+    public async Task GetProjectOverviewMonthly_ShouldSplitWeekHoursAcrossMonthBoundaries_ByWorkdays()
+    {
+        using var db = Factory.CreateContext();
+        var (empId, projId) = await SeedEmployeeAndProject(db);
+        var service = new PlanningService(db, DefaultConfig);
+
+        // ISO week 14 of 2026 starts on Mar 30 (Mon) and spans Mar/Apr weekdays as 2/5 and 3/5.
+        await service.UpsertProjectBudgetsAsync(new List<ProjectWeeklyBudgetUpsertDto>
+        {
+            new(projId, 14, 2026, 50m)
+        });
+        await service.UpsertAllocationsAsync(new List<AllocationUpsertDto>
+        {
+            new(empId, projId, 14, 2026, 25m)
+        });
+
+        var monthly = await service.GetProjectOverviewMonthlyAsync(2026, 14, 14);
+        var project = Assert.Single(monthly);
+        Assert.Equal(2, project.Months.Count);
+
+        var march = project.Months.Single(m => m.Month == 3 && m.Year == 2026);
+        var april = project.Months.Single(m => m.Month == 4 && m.Year == 2026);
+
+        Assert.Equal(20m, march.BudgetedHours);
+        Assert.Equal(10m, march.AllocatedHours);
+        Assert.Equal(50m, march.Percentage);
+        Assert.Equal("under", march.Status);
+        Assert.Equal(10m, Assert.Single(march.Allocations).PlannedHours);
+
+        Assert.Equal(30m, april.BudgetedHours);
+        Assert.Equal(15m, april.AllocatedHours);
+        Assert.Equal(50m, april.Percentage);
+        Assert.Equal("under", april.Status);
+        Assert.Equal(15m, Assert.Single(april.Allocations).PlannedHours);
+    }
+
+    [Fact]
+    public async Task GetProjectOverviewMonthly_ShouldUseProjectThresholds_ForStatus()
+    {
+        using var db = Factory.CreateContext();
+        var (empId, projId) = await SeedEmployeeAndProject(db);
+        var config = CreateConfig(projectMinThreshold: 90m, projectMaxThreshold: 110m);
+        var service = new PlanningService(db, config);
+
+        await service.UpsertProjectBudgetsAsync(new List<ProjectWeeklyBudgetUpsertDto>
+        {
+            new(projId, 6, 2026, 10m)
+        });
+        await service.UpsertAllocationsAsync(new List<AllocationUpsertDto>
+        {
+            new(empId, projId, 6, 2026, 11.04m)
+        });
+
+        var monthly = await service.GetProjectOverviewMonthlyAsync(2026, 6, 6);
+        var month = Assert.Single(Assert.Single(monthly).Months);
+
+        Assert.Equal(110.4m, month.Percentage);
+        Assert.Equal("optimal", month.Status);
+    }
+
+    [Fact]
+    public async Task GetProjectOverviewMonthly_ShouldReturnAllActiveProjects_WithMonthCells()
+    {
+        using var db = Factory.CreateContext();
+        var empService = new EmployeeService(db);
+        var projService = new ProjectService(db);
+
+        var emp = await empService.CreateAsync(new EmployeeCreateDto("Test", "User", "test-all-projects@t.com", 40m));
+        var proj1 = await projService.CreateAsync(new ProjectCreateDto("A", ProjectType.Customer));
+        var proj2 = await projService.CreateAsync(new ProjectCreateDto("B", ProjectType.Internal));
+
+        var service = new PlanningService(db, DefaultConfig);
+
+        await service.UpsertProjectBudgetsAsync(new List<ProjectWeeklyBudgetUpsertDto>
+        {
+            new(proj1.Id, 14, 2026, 50m),
+            new(proj2.Id, 14, 2026, 25m)
+        });
+        await service.UpsertAllocationsAsync(new List<AllocationUpsertDto>
+        {
+            new(emp.Id, proj1.Id, 14, 2026, 10m)
+        });
+
+        var monthly = await service.GetProjectOverviewMonthlyAsync(2026, 14, 14);
+
+        Assert.Equal(2, monthly.Count);
+        Assert.All(monthly, p => Assert.Equal(2, p.Months.Count));
+
+        var firstProject = monthly.Single(p => p.ProjectId == proj1.Id);
+        Assert.Contains(firstProject.Months, m => m.Month == 3 && m.BudgetedHours == 20m && m.AllocatedHours == 4m);
+        Assert.Contains(firstProject.Months, m => m.Month == 4 && m.BudgetedHours == 30m && m.AllocatedHours == 6m);
+
+        var secondProject = monthly.Single(p => p.ProjectId == proj2.Id);
+        Assert.Contains(secondProject.Months, m => m.Month == 3 && m.BudgetedHours == 10m && m.AllocatedHours == 0m);
+        Assert.Contains(secondProject.Months, m => m.Month == 4 && m.BudgetedHours == 15m && m.AllocatedHours == 0m);
+    }
 }
+
+

@@ -60,6 +60,13 @@ public record ProjectWeekOverviewDto(
     List<ProjectWeekSummaryDto> Weeks
 );
 
+public record ProjectMonthOverviewDto(
+    int ProjectId,
+    string ProjectName,
+    string ProjectType,
+    List<ProjectMonthSummaryDto> Months
+);
+
 public record ProjectWeekSummaryDto(
     int CalendarWeek,
     int Year,
@@ -74,6 +81,16 @@ public record EmployeeAllocationDetailDto(
     int EmployeeId,
     string EmployeeName,
     decimal PlannedHours
+);
+
+public record ProjectMonthSummaryDto(
+    int Year,
+    int Month,
+    decimal BudgetedHours,
+    decimal AllocatedHours,
+    decimal Percentage,
+    string Status,
+    List<EmployeeAllocationDetailDto> Allocations
 );
 
 public record ProjectPlanningThresholdsDto(

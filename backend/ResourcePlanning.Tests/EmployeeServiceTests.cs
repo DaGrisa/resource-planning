@@ -4,21 +4,13 @@ using ResourcePlanning.Api.Services;
 
 namespace ResourcePlanning.Tests;
 
-public class EmployeeServiceTests : IDisposable
+public class EmployeeServiceTests : ServiceTestBase
 {
-    private readonly TestDbContextFactory _factory;
-
-    public EmployeeServiceTests()
-    {
-        _factory = new TestDbContextFactory();
-    }
-
-    public void Dispose() => _factory.Dispose();
 
     [Fact]
     public async Task CreateAsync_ShouldCreateEmployee()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new EmployeeService(db);
 
         var result = await service.CreateAsync(new EmployeeCreateDto("John", "Doe", "john@test.com"));
@@ -34,7 +26,7 @@ public class EmployeeServiceTests : IDisposable
     [Fact]
     public async Task GetAllAsync_ShouldReturnOnlyActive_WhenActiveOnlyTrue()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new EmployeeService(db);
 
         await service.CreateAsync(new EmployeeCreateDto("Active", "User", "active@test.com"));
@@ -50,7 +42,7 @@ public class EmployeeServiceTests : IDisposable
     [Fact]
     public async Task GetAllAsync_ShouldReturnAll_WhenActiveOnlyFalse()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new EmployeeService(db);
 
         await service.CreateAsync(new EmployeeCreateDto("Active", "User", "active@test.com"));
@@ -65,7 +57,7 @@ public class EmployeeServiceTests : IDisposable
     [Fact]
     public async Task GetByIdAsync_ShouldReturnNull_WhenNotFound()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new EmployeeService(db);
 
         var result = await service.GetByIdAsync(999);
@@ -76,7 +68,7 @@ public class EmployeeServiceTests : IDisposable
     [Fact]
     public async Task UpdateAsync_ShouldModifyEmployee()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new EmployeeService(db);
 
         var created = await service.CreateAsync(new EmployeeCreateDto("John", "Doe", "john@test.com"));
@@ -92,7 +84,7 @@ public class EmployeeServiceTests : IDisposable
     [Fact]
     public async Task DeleteAsync_ShouldSoftDelete()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new EmployeeService(db);
 
         var created = await service.CreateAsync(new EmployeeCreateDto("John", "Doe", "john@test.com"));
@@ -106,7 +98,7 @@ public class EmployeeServiceTests : IDisposable
     [Fact]
     public async Task GetAllAsync_ShouldFilterByDepartment()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         db.Departments.Add(new Department { Name = "Dept A" });
         db.Departments.Add(new Department { Name = "Dept B" });
         await db.SaveChangesAsync();
@@ -121,3 +113,5 @@ public class EmployeeServiceTests : IDisposable
         Assert.Equal("A", result[0].FirstName);
     }
 }
+
+

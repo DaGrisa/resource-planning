@@ -49,6 +49,13 @@ export interface ProjectWeekOverview {
   weeks: ProjectWeekSummary[];
 }
 
+export interface ProjectMonthOverview {
+  projectId: number;
+  projectName: string;
+  projectType: string;
+  months: ProjectMonthSummary[];
+}
+
 export interface ProjectWeekSummary {
   calendarWeek: number;
   year: number;
@@ -63,6 +70,16 @@ export interface EmployeeAllocationDetail {
   employeeId: number;
   employeeName: string;
   plannedHours: number;
+}
+
+export interface ProjectMonthSummary {
+  year: number;
+  month: number;
+  budgetedHours: number;
+  allocatedHours: number;
+  percentage: number;
+  status: 'none' | 'under' | 'optimal' | 'over';
+  allocations: EmployeeAllocationDetail[];
 }
 
 export interface ProjectBudgetUpsertDto {

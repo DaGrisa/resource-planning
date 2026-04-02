@@ -11,6 +11,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { EmployeeService } from '../../../core/services/employee.service';
 import { DepartmentService } from '../../../core/services/department.service';
 import { Department } from '../../../core/models';
+import { saveAndNavigate } from '../../../shared/utils/save-action.util';
 
 @Component({
   selector: 'app-employee-form',
@@ -106,27 +107,27 @@ export class EmployeeFormComponent implements OnInit {
     const val = this.form.getRawValue();
 
     if (this.isEdit) {
-      this.employeeService.update(this.employeeId, {
+      saveAndNavigate(this.employeeService.update(this.employeeId, {
         firstName: val.firstName!,
         lastName: val.lastName!,
         email: val.email!,
         weeklyHours: val.weeklyHours!,
         departmentId: val.departmentId,
         isActive: val.isActive!
-      }).subscribe(() => {
-        this.snackBar.open('Employee updated', 'OK', { duration: 3000 });
-        this.router.navigate(['/employees']);
+      }), this.snackBar, this.router, {
+        successMessage: 'Employee updated',
+        navigateTo: '/employees'
       });
     } else {
-      this.employeeService.create({
+      saveAndNavigate(this.employeeService.create({
         firstName: val.firstName!,
         lastName: val.lastName!,
         email: val.email!,
         weeklyHours: val.weeklyHours!,
         departmentId: val.departmentId
-      }).subscribe(() => {
-        this.snackBar.open('Employee created', 'OK', { duration: 3000 });
-        this.router.navigate(['/employees']);
+      }), this.snackBar, this.router, {
+        successMessage: 'Employee created',
+        navigateTo: '/employees'
       });
     }
   }

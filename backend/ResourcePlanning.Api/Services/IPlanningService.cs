@@ -11,5 +11,6 @@ public interface IPlanningService
     Task<EmployeeWeekOverviewDto?> GetEmployeeAllocationsAsync(int employeeId, int year, int weekFrom, int weekTo);
     Task<ProjectPlanningThresholdsDto> GetProjectThresholdsAsync();
     Task<List<ProjectWeekOverviewDto>> GetProjectOverviewAsync(int year, int weekFrom, int weekTo);
+    Task<List<ProjectMonthOverviewDto>> GetProjectOverviewMonthlyAsync(int year, int weekFrom, int weekTo);
     Task UpsertProjectBudgetsAsync(List<ProjectWeeklyBudgetUpsertDto> budgets);
 }

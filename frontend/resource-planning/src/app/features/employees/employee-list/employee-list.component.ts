@@ -14,7 +14,7 @@ import { finalize } from 'rxjs';
 import { EmployeeService } from '../../../core/services/employee.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { Employee } from '../../../core/models';
-import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { confirmExecute$ } from '../../../shared/utils/confirm-action.util';
 
 @Component({
   selector: 'app-employee-list',
@@ -124,16 +124,13 @@ export class EmployeeListComponent implements OnInit {
   }
 
   confirmDelete(employee: Employee) {
-    const ref = this.dialog.open(ConfirmDialogComponent, {
-      data: { title: 'Deactivate Employee', message: `Deactivate ${employee.firstName} ${employee.lastName}?`, confirmText: 'Deactivate' }
-    });
-    ref.afterClosed().subscribe(confirmed => {
-      if (confirmed) {
-        this.employeeService.delete(employee.id).subscribe(() => {
-          this.snackBar.open('Employee deactivated', 'OK', { duration: 3000 });
-          this.loadEmployees();
-        });
-      }
+    confirmExecute$(
+      this.dialog,
+      { title: 'Deactivate Employee', message: `Deactivate ${employee.firstName} ${employee.lastName}?`, confirmText: 'Deactivate' },
+      () => this.employeeService.delete(employee.id)
+    ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.snackBar.open('Employee deactivated', 'OK', { duration: 3000 });
+      this.loadEmployees();
     });
   }
 }

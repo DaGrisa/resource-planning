@@ -27,7 +27,7 @@ public class AbsenceService : IAbsenceService
         return await query.Select(a => new AbsenceDto(
             a.Id,
             a.EmployeeId,
-            a.Employee.FirstName + " " + a.Employee.LastName,
+            a.Employee.FullName(),
             a.CalendarWeek,
             a.Year,
             a.Type,
@@ -68,52 +68,41 @@ public class AbsenceService : IAbsenceService
 
     public async Task UpsertAbsencesAsync(List<AbsenceUpsertDto> absences)
     {
-        if (absences.Count == 0) return;
-
-        // Batch-load all potentially matching records in a single query
-        var employeeIds = absences.Select(d => d.EmployeeId).Distinct().ToList();
-        var years = absences.Select(d => d.Year).Distinct().ToList();
-        var calendarWeeks = absences.Select(d => d.CalendarWeek).Distinct().ToList();
-
-        var existingList = await _db.Absences
-            .Where(a => employeeIds.Contains(a.EmployeeId)
-                     && years.Contains(a.Year)
-                     && calendarWeeks.Contains(a.CalendarWeek))
-            .ToListAsync();
-
-        var existingMap = existingList.ToDictionary(
-            a => (a.EmployeeId, a.CalendarWeek, a.Year, a.Type, a.HolidayDate));
-
-        await using var tx = await _db.Database.BeginTransactionAsync();
-        foreach (var dto in absences)
-        {
-            existingMap.TryGetValue((dto.EmployeeId, dto.CalendarWeek, dto.Year, dto.Type, (DateOnly?)null), out var existing);
-
-            if (dto.Hours <= 0)
+        await ServiceOperationHelpers.BatchUpsertAsync(
+            _db,
+            _db.Absences,
+            absences,
+            async dtos =>
             {
-                if (existing != null) _db.Absences.Remove(existing);
-            }
-            else if (existing != null)
+                var employeeIds = dtos.Select(d => d.EmployeeId).Distinct().ToList();
+                var years = dtos.Select(d => d.Year).Distinct().ToList();
+                var calendarWeeks = dtos.Select(d => d.CalendarWeek).Distinct().ToList();
+
+                var existingList = await _db.Absences
+                    .Where(a => employeeIds.Contains(a.EmployeeId)
+                             && years.Contains(a.Year)
+                             && calendarWeeks.Contains(a.CalendarWeek))
+                    .ToListAsync();
+
+                return existingList.ToDictionary(a => (a.EmployeeId, a.CalendarWeek, a.Year, a.Type, a.HolidayDate));
+            },
+            dto => (dto.EmployeeId, dto.CalendarWeek, dto.Year, dto.Type, (DateOnly?)null),
+            dto => dto.Hours <= 0,
+            (existing, dto) =>
             {
                 existing.Hours = dto.Hours;
                 existing.Note = dto.Note;
-            }
-            else
+            },
+            dto => new Absence
             {
-                _db.Absences.Add(new Absence
-                {
-                    EmployeeId = dto.EmployeeId,
-                    CalendarWeek = dto.CalendarWeek,
-                    Year = dto.Year,
-                    Type = dto.Type,
-                    Hours = dto.Hours,
-                    Note = dto.Note
-                });
+                EmployeeId = dto.EmployeeId,
+                CalendarWeek = dto.CalendarWeek,
+                Year = dto.Year,
+                Type = dto.Type,
+                Hours = dto.Hours,
+                Note = dto.Note
             }
-        }
-
-        await _db.SaveChangesAsync();
-        await tx.CommitAsync();
+        );
     }
 
     public async Task UpsertHolidaysAsync(List<HolidayUpsertDto> holidays)

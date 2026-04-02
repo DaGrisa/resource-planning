@@ -5,17 +5,9 @@ using ResourcePlanning.Api.Services;
 
 namespace ResourcePlanning.Tests;
 
-public class AbsenceServiceTests : IDisposable
+public class AbsenceServiceTests : ServiceTestBase
 {
-    private readonly TestDbContextFactory _factory;
     private static readonly IConfiguration DefaultConfig = new ConfigurationBuilder().Build();
-
-    public AbsenceServiceTests()
-    {
-        _factory = new TestDbContextFactory();
-    }
-
-    public void Dispose() => _factory.Dispose();
 
     private async Task<int> SeedEmployee(Api.Data.AppDbContext db)
     {
@@ -27,7 +19,7 @@ public class AbsenceServiceTests : IDisposable
     [Fact]
     public async Task UpsertAbsences_ShouldCreate_WhenNew()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var empId = await SeedEmployee(db);
         var service = new AbsenceService(db);
 
@@ -45,7 +37,7 @@ public class AbsenceServiceTests : IDisposable
     [Fact]
     public async Task UpsertAbsences_ShouldUpdate_WhenExisting()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var empId = await SeedEmployee(db);
         var service = new AbsenceService(db);
 
@@ -67,7 +59,7 @@ public class AbsenceServiceTests : IDisposable
     [Fact]
     public async Task UpsertAbsences_ShouldDelete_WhenZeroHours()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var empId = await SeedEmployee(db);
         var service = new AbsenceService(db);
 
@@ -87,7 +79,7 @@ public class AbsenceServiceTests : IDisposable
     [Fact]
     public async Task DeleteAbsence_ShouldRemove_WhenExists()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var empId = await SeedEmployee(db);
         var service = new AbsenceService(db);
 
@@ -107,7 +99,7 @@ public class AbsenceServiceTests : IDisposable
     [Fact]
     public async Task DeleteAbsence_ShouldReturnFalse_WhenNotFound()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new AbsenceService(db);
 
         var result = await service.DeleteAbsenceAsync(999);
@@ -117,7 +109,7 @@ public class AbsenceServiceTests : IDisposable
     [Fact]
     public async Task GetAbsences_ShouldFilterByWeekRange()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var empId = await SeedEmployee(db);
         var service = new AbsenceService(db);
 
@@ -136,7 +128,7 @@ public class AbsenceServiceTests : IDisposable
     [Fact]
     public async Task GetOverview_ShouldIncludeAbsenceHours()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var empId = await SeedEmployee(db);
         var projService = new ProjectService(db);
         var proj = await projService.CreateAsync(new ProjectCreateDto("Proj", ProjectType.Customer));
@@ -165,7 +157,7 @@ public class AbsenceServiceTests : IDisposable
     [Fact]
     public async Task UpsertHolidays_ShouldCreateAbsences_ForAllActiveEmployees()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var emp1 = await SeedEmployee(db);
         var emp2 = await new EmployeeService(db).CreateAsync(new EmployeeCreateDto("Other", "User", "other@t.com", 35m));
         var service = new AbsenceService(db);
@@ -186,7 +178,7 @@ public class AbsenceServiceTests : IDisposable
     [Fact]
     public async Task GetOverview_ShouldIncludeRegularAndHolidayAbsenceHours_SameWeek()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var empId = await SeedEmployee(db);
         var projService = new ProjectService(db);
         var proj = await projService.CreateAsync(new ProjectCreateDto("Proj", ProjectType.Customer));
@@ -223,7 +215,7 @@ public class AbsenceServiceTests : IDisposable
     [Fact]
     public async Task GetHolidays_ShouldGroupByWeek_AndReturnSingleEntryPerWeek()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         _ = await SeedEmployee(db);
         _ = await new EmployeeService(db).CreateAsync(new EmployeeCreateDto("Other", "User", "other2@t.com", 35m));
         var service = new AbsenceService(db);
@@ -245,7 +237,7 @@ public class AbsenceServiceTests : IDisposable
     [Fact]
     public async Task UpsertHolidays_ShouldMoveHoliday_WhenOriginalDateProvided()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         _ = await SeedEmployee(db);
         _ = await new EmployeeService(db).CreateAsync(new EmployeeCreateDto("Other", "User", "other3@t.com", 35m));
         var service = new AbsenceService(db);
@@ -273,3 +265,5 @@ public class AbsenceServiceTests : IDisposable
         Assert.DoesNotContain(holidayAbsences, h => h.Note == "Original");
     }
 }
+
+

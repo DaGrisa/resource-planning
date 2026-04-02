@@ -84,4 +84,31 @@ describe('PlanningService', () => {
     expect(req.request.method).toBe('GET');
     req.flush({ optimalMinPercent: 90, optimalMaxPercent: 110 });
   });
+
+  it('should get monthly project overview', () => {
+    service.getProjectOverviewMonthly({ year: 2026, weekFrom: 10, weekTo: 14 }).subscribe(monthly => {
+      expect(monthly.length).toBe(1);
+      expect(monthly[0].months.length).toBe(2);
+    });
+
+    const req = httpMock.expectOne(r =>
+      r.url.includes('/planning/project-overview-monthly') &&
+      r.params.get('year') === '2026' &&
+      r.params.get('weekFrom') === '10' &&
+      r.params.get('weekTo') === '14'
+    );
+
+    expect(req.request.method).toBe('GET');
+    req.flush([
+      {
+        projectId: 1,
+        projectName: 'P1',
+        projectType: 'Customer',
+        months: [
+          { year: 2026, month: 3, budgetedHours: 40, allocatedHours: 35, percentage: 87.5, status: 'under', allocations: [] },
+          { year: 2026, month: 4, budgetedHours: 40, allocatedHours: 45, percentage: 112.5, status: 'over', allocations: [] }
+        ]
+      }
+    ]);
+  });
 });

@@ -92,7 +92,7 @@ public class AuthService : IAuthService
         user.DisplayName,
         user.IsActive,
         user.EmployeeId,
-        user.Employee != null ? $"{user.Employee.FirstName} {user.Employee.LastName}" : null,
+        user.Employee != null ? user.Employee.FullName() : null,
         user.Roles.Select(r => r.Role.ToString()).ToArray(),
         user.CreatedAt,
         user.UpdatedAt

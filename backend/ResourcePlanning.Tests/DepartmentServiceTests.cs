@@ -4,21 +4,13 @@ using ResourcePlanning.Api.Services;
 
 namespace ResourcePlanning.Tests;
 
-public class DepartmentServiceTests : IDisposable
+public class DepartmentServiceTests : ServiceTestBase
 {
-    private readonly TestDbContextFactory _factory;
-
-    public DepartmentServiceTests()
-    {
-        _factory = new TestDbContextFactory();
-    }
-
-    public void Dispose() => _factory.Dispose();
 
     [Fact]
     public async Task CreateAsync_ShouldCreateDepartment()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new DepartmentService(db);
 
         var result = await service.CreateAsync(new DepartmentCreateDto("Engineering"));
@@ -30,7 +22,7 @@ public class DepartmentServiceTests : IDisposable
     [Fact]
     public async Task GetAllAsync_ShouldReturnWithEmployeeCount()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new DepartmentService(db);
         var empService = new EmployeeService(db);
 
@@ -47,7 +39,7 @@ public class DepartmentServiceTests : IDisposable
     [Fact]
     public async Task DeleteAsync_ShouldFail_WhenHasActiveEmployees()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new DepartmentService(db);
         var empService = new EmployeeService(db);
 
@@ -60,7 +52,7 @@ public class DepartmentServiceTests : IDisposable
     [Fact]
     public async Task DeleteAsync_ShouldSucceed_WhenEmpty()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new DepartmentService(db);
 
         var dept = await service.CreateAsync(new DepartmentCreateDto("Empty"));
@@ -74,7 +66,7 @@ public class DepartmentServiceTests : IDisposable
     [Fact]
     public async Task SetManagersAsync_ShouldReplaceManagers()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new DepartmentService(db);
         var empService = new EmployeeService(db);
 
@@ -91,3 +83,5 @@ public class DepartmentServiceTests : IDisposable
         Assert.Equal(2, detail!.Managers.Count);
     }
 }
+
+

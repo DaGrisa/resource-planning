@@ -12,7 +12,7 @@ import { finalize } from 'rxjs';
 import { DepartmentService } from '../../../core/services/department.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { Department } from '../../../core/models';
-import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { confirmExecute$ } from '../../../shared/utils/confirm-action.util';
 
 @Component({
   selector: 'app-department-list',
@@ -101,20 +101,17 @@ export class DepartmentListComponent implements OnInit {
   }
 
   confirmDelete(dept: Department) {
-    const ref = this.dialog.open(ConfirmDialogComponent, {
-      data: { title: 'Delete Department', message: `Delete "${dept.name}"? Only possible if no active employees.` }
-    });
-    ref.afterClosed().subscribe(confirmed => {
-      if (confirmed) {
-        this.departmentService.delete(dept.id).subscribe({
-          next: () => {
-            this.snackBar.open('Department deleted', 'OK', { duration: 3000 });
-            this.load();
-          },
-          error: (err) => {
-            this.snackBar.open(err.error?.message || 'Cannot delete department', 'OK', { duration: 5000 });
-          }
-        });
+    confirmExecute$(
+      this.dialog,
+      { title: 'Delete Department', message: `Delete "${dept.name}"? Only possible if no active employees.` },
+      () => this.departmentService.delete(dept.id)
+    ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.snackBar.open('Department deleted', 'OK', { duration: 3000 });
+        this.load();
+      },
+      error: (err) => {
+        this.snackBar.open(err.error?.message || 'Cannot delete department', 'OK', { duration: 5000 });
       }
     });
   }

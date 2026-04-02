@@ -13,6 +13,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ProjectService } from '../../../core/services/project.service';
 import { EmployeeService } from '../../../core/services/employee.service';
 import { Employee, ProjectType } from '../../../core/models';
+import { saveAndNavigate } from '../../../shared/utils/save-action.util';
 
 @Component({
   selector: 'app-project-form',
@@ -123,27 +124,27 @@ export class ProjectFormComponent implements OnInit {
     const val = this.form.getRawValue();
 
     if (this.isEdit) {
-      this.projectService.update(this.projectId, {
+      saveAndNavigate(this.projectService.update(this.projectId, {
         name: val.name!,
         projectType: val.projectType!,
         projectLeadId: val.projectLeadId,
         isActive: val.isActive!,
         startDate: val.startDate?.toISOString() || null,
         endDate: val.endDate?.toISOString() || null
-      }).subscribe(() => {
-        this.snackBar.open('Project updated', 'OK', { duration: 3000 });
-        this.router.navigate(['/projects']);
+      }), this.snackBar, this.router, {
+        successMessage: 'Project updated',
+        navigateTo: '/projects'
       });
     } else {
-      this.projectService.create({
+      saveAndNavigate(this.projectService.create({
         name: val.name!,
         projectType: val.projectType!,
         projectLeadId: val.projectLeadId,
         startDate: val.startDate?.toISOString() || null,
         endDate: val.endDate?.toISOString() || null
-      }).subscribe(() => {
-        this.snackBar.open('Project created', 'OK', { duration: 3000 });
-        this.router.navigate(['/projects']);
+      }), this.snackBar, this.router, {
+        successMessage: 'Project created',
+        navigateTo: '/projects'
       });
     }
   }

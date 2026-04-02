@@ -12,6 +12,7 @@ import { forkJoin } from 'rxjs';
 import { DepartmentService } from '../../../core/services/department.service';
 import { EmployeeService } from '../../../core/services/employee.service';
 import { Employee } from '../../../core/models';
+import { saveAndNavigate } from '../../../shared/utils/save-action.util';
 
 @Component({
   selector: 'app-department-form',
@@ -105,14 +106,14 @@ export class DepartmentFormComponent implements OnInit {
       const update$ = this.departmentService.update(this.departmentId, dto);
       const managers$ = this.departmentService.setManagers(this.departmentId, val.managerIds!);
 
-      forkJoin([update$, managers$]).subscribe(() => {
-        this.snackBar.open('Department updated', 'OK', { duration: 3000 });
-        this.router.navigate(['/departments']);
+      saveAndNavigate(forkJoin([update$, managers$]), this.snackBar, this.router, {
+        successMessage: 'Department updated',
+        navigateTo: '/departments'
       });
     } else {
-      this.departmentService.create(dto).subscribe(() => {
-        this.snackBar.open('Department created', 'OK', { duration: 3000 });
-        this.router.navigate(['/departments']);
+      saveAndNavigate(this.departmentService.create(dto), this.snackBar, this.router, {
+        successMessage: 'Department created',
+        navigateTo: '/departments'
       });
     }
   }

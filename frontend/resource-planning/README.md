@@ -84,4 +84,14 @@ The selected value of the **To Week** filter is persisted in localStorage and re
 
 Project Planning includes a **Bulk Plan** action to set a weekly budget for a selected project over a chosen week range.
 
+Project Overview supports a **Monthly** view mode across all projects, with backend month aggregation that splits weekly planned/budgeted hours by working days when an ISO week spans two calendar months.
+
+Project Overview supports PDF export in both Weekly and Monthly views (per project row).
+
 Employee Planning **Bulk Plan** accepts `0` hours, which clears allocations for the selected project/week range when saved.
+
+Route access configuration in `src/app/app.routes.ts` uses shared role-set constants (for example Admin-only and planning role groups) to avoid repeating identical `roleGuard(...)` combinations across many routes.
+
+List components centralize confirmation-based destructive actions through `confirmExecute$` in `src/app/shared/utils/confirm-action.util.ts`.
+
+Form components centralize post-save success snackbar + navigation behavior through `saveAndNavigate` in `src/app/shared/utils/save-action.util.ts`.

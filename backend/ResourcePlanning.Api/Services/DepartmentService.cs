@@ -19,7 +19,7 @@ public class DepartmentService : IDepartmentService
             .OrderBy(d => d.Name)
             .Select(d => new DepartmentDto(
                 d.Id, d.Name, d.LeadManagerId,
-                d.LeadManager != null ? d.LeadManager.FirstName + " " + d.LeadManager.LastName : null,
+                d.LeadManager != null ? d.LeadManager.FullName() : null,
                 d.Employees.Count(e => e.IsActive),
                 d.CreatedAt, d.UpdatedAt
             ))
@@ -39,10 +39,10 @@ public class DepartmentService : IDepartmentService
 
         return new DepartmentDetailDto(
             d.Id, d.Name, d.LeadManagerId,
-            d.LeadManager != null ? d.LeadManager.FirstName + " " + d.LeadManager.LastName : null,
+            d.LeadManager != null ? d.LeadManager.FullName() : null,
             d.Employees.Count(e => e.IsActive),
             d.CreatedAt, d.UpdatedAt,
-            d.Managers.Select(m => new DepartmentManagerDto(m.EmployeeId, m.Employee.FirstName + " " + m.Employee.LastName)).ToList(),
+            d.Managers.Select(m => new DepartmentManagerDto(m.EmployeeId, m.Employee.FullName())).ToList(),
             d.Employees.Where(e => e.IsActive).Select(e => new DepartmentEmployeeDto(e.Id, e.FirstName, e.LastName, e.Email)).ToList()
         );
     }
@@ -62,7 +62,7 @@ public class DepartmentService : IDepartmentService
             await _db.Entry(entity).Reference(d => d.LeadManager).LoadAsync();
 
         return new DepartmentDto(entity.Id, entity.Name, entity.LeadManagerId,
-            entity.LeadManager != null ? entity.LeadManager.FirstName + " " + entity.LeadManager.LastName : null,
+            entity.LeadManager != null ? entity.LeadManager.FullName() : null,
             0, entity.CreatedAt, entity.UpdatedAt);
     }
 
@@ -91,18 +91,12 @@ public class DepartmentService : IDepartmentService
 
     public async Task<bool> SetManagersAsync(int id, List<int> employeeIds)
     {
-        var dept = await _db.Departments.Include(d => d.Managers).FirstOrDefaultAsync(d => d.Id == id);
-        if (dept == null) return false;
-
-        await using var tx = await _db.Database.BeginTransactionAsync();
-        _db.DepartmentManagers.RemoveRange(dept.Managers);
-        foreach (var empId in employeeIds)
-        {
-            _db.DepartmentManagers.Add(new DepartmentManager { DepartmentId = id, EmployeeId = empId });
-        }
-
-        await _db.SaveChangesAsync();
-        await tx.CommitAsync();
-        return true;
+        return await ServiceOperationHelpers.ReplaceRelationsAsync(
+            _db,
+            _db.Departments.Include(d => d.Managers).Where(d => d.Id == id),
+            d => d.Managers,
+            _db.DepartmentManagers,
+            employeeIds.Select(empId => new DepartmentManager { DepartmentId = id, EmployeeId = empId })
+        );
     }
 }

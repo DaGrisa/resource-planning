@@ -119,12 +119,19 @@ Four roles defined as an enum (`Role.cs` / `auth.model.ts`):
 - **JSON enums**: ProjectType serialized as strings via JsonStringEnumConverter
 - **Read queries**: All use `.AsNoTracking()` — entity tracking only on write paths
 - **Batch upserts**: Load all potentially matching records in one query before the loop, then match via dictionary for O(1) lookup (PlanningService, AbsenceService)
+- **Shared batch upsert helper**: `ServiceOperationHelpers.BatchUpsertAsync` centralizes transactional upsert/delete-on-zero behavior used by planning budgets/allocations and regular absences
+- **Shared relation replacement helper**: `ServiceOperationHelpers.ReplaceRelationsAsync` centralizes replace-all relation updates used by project team and department manager assignments
+- **Employee full-name mapping**: Services use `EmployeeNameExtensions.FullName()` to avoid repeated string concatenation logic
 - **Planning overview**: Uses grouped dictionaries after a single DB fetch — O(1) per employee/week cell instead of repeated LINQ scans
 - **Planning status thresholds**: Config-driven by overview type — employee overview uses `Planning:EmployeeOptimalThresholdPercent`; project overview uses `Planning:ProjectOptimalThresholdMinPercent` and `Planning:ProjectOptimalThresholdMaxPercent` (with min/max normalization if configured in reverse)
 - **Project legend thresholds**: Project Planning and Project Overview load thresholds from `GET /api/planning/project-thresholds` so legend labels and client-side project budget status logic match backend configuration
+- **Project overview monthly mode**: Project Overview supports a Monthly view across all projects via `GET /api/planning/project-overview-monthly`; backend aggregation splits each week's allocated/budgeted hours by working-day share when a week spans two calendar months
+- **Project overview exports**: Project Overview supports per-project PDF export in both Weekly and Monthly modes
 - **Planning tooltips**: Employee Planning, Project Planning, Employee Overview, and Project Overview render tooltip items on separate lines using a shared multiline tooltip class
 - **Absence tooltip breakdown**: Employee Planning and Employee Overview tooltips show `Holiday` and `Regular absence` hours separately when present
 - **Week filter persistence**: Page-level views with a To Week picker persist the selected week in localStorage (`resourcePlanning.weekTo`) and reuse it on load (bulk planning dialogs are excluded)
+- **Shared list confirm helper**: Frontend list components use `confirmExecute$` (`src/app/shared/utils/confirm-action.util.ts`) to centralize confirm-dialog + execute flow
+- **Shared form save helper**: Frontend form components use `saveAndNavigate` (`src/app/shared/utils/save-action.util.ts`) to centralize success snackbar + navigation behavior
 - **Subscription cleanup**: All Angular components use `takeUntilDestroyed(destroyRef)` on HTTP subscriptions to cancel in-flight requests on component destroy
 
 ## Database
@@ -157,6 +164,7 @@ Four roles defined as an enum (`Role.cs` / `auth.model.ts`):
 - `PUT /api/planning/allocations` — batch upsert (array of allocations)
 - `GET /api/planning/overview` — per-employee/week aggregation with status (filter: departmentId)
 - `GET /api/planning/project-overview` — per-project/week aggregation with status
+- `GET /api/planning/project-overview-monthly` — per-project/month aggregation with status, splitting cross-month ISO week hours by working-day share
 - `GET /api/planning/project-thresholds` — configured project optimal min/max thresholds for UI legends/client-side status
 - `GET /api/planning/employee/{id}` — single employee allocations
 - `GET /api/absences` — filter by year, weekFrom, weekTo, employeeId, departmentId, type (`Regular` | `Holiday`)
@@ -178,6 +186,7 @@ cd frontend/resource-planning && npm test
 - **Run tests periodically** during development to catch regressions early
 - **Create tests for every change** where it makes sense — especially for services, business logic, and data flows
 - **Backend tests** use xUnit + in-memory SQLite via `TestDbContextFactory`
+- **Backend test base**: `ServiceTestBase` owns shared `TestDbContextFactory` lifecycle for service test classes to reduce setup boilerplate
 - **Frontend tests** use vitest via `@angular/build:unit-test` builder (run with `ng test`)
 - **Frontend component tests**: Use `autoDetectChanges(true)` instead of manual `detectChanges()` when flushing HTTP mocks to avoid `ExpressionChangedAfterItHasBeenCheckedError`
 - **Frontend component tests**: `fakeAsync`/`tick` is NOT available (no zone.js/testing) — use async/await with `fixture.whenStable()` if needed

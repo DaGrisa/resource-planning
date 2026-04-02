@@ -64,6 +64,15 @@ public class PlanningController : ControllerBase
         return await _service.GetProjectOverviewAsync(year, weekFrom, weekTo);
     }
 
+    [HttpGet("project-overview-monthly")]
+    public async Task<ActionResult<List<ProjectMonthOverviewDto>>> GetProjectOverviewMonthly(
+        [FromQuery] int year,
+        [FromQuery] int weekFrom,
+        [FromQuery] int weekTo)
+    {
+        return await _service.GetProjectOverviewMonthlyAsync(year, weekFrom, weekTo);
+    }
+
     [HttpGet("project-thresholds")]
     public async Task<ActionResult<ProjectPlanningThresholdsDto>> GetProjectThresholds()
     {

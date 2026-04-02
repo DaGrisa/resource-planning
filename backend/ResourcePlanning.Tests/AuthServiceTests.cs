@@ -5,14 +5,12 @@ using ResourcePlanning.Api.Services;
 
 namespace ResourcePlanning.Tests;
 
-public class AuthServiceTests : IDisposable
+public class AuthServiceTests : ServiceTestBase
 {
-    private readonly TestDbContextFactory _factory;
     private readonly IConfiguration _config;
 
     public AuthServiceTests()
     {
-        _factory = new TestDbContextFactory();
         _config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -23,8 +21,6 @@ public class AuthServiceTests : IDisposable
             })
             .Build();
     }
-
-    public void Dispose() => _factory.Dispose();
 
     private async Task<User> SeedUser(Api.Data.AppDbContext db)
     {
@@ -44,7 +40,7 @@ public class AuthServiceTests : IDisposable
     [Fact]
     public async Task LoginAsync_ShouldReturnToken_WhenCredentialsValid()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         await SeedUser(db);
         var service = new AuthService(db, _config);
 
@@ -59,7 +55,7 @@ public class AuthServiceTests : IDisposable
     [Fact]
     public async Task LoginAsync_ShouldReturnNull_WhenPasswordWrong()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         await SeedUser(db);
         var service = new AuthService(db, _config);
 
@@ -71,7 +67,7 @@ public class AuthServiceTests : IDisposable
     [Fact]
     public async Task LoginAsync_ShouldReturnNull_WhenUserNotFound()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new AuthService(db, _config);
 
         var result = await service.LoginAsync(new LoginRequestDto("nonexistent", "password"));
@@ -82,7 +78,7 @@ public class AuthServiceTests : IDisposable
     [Fact]
     public async Task LoginAsync_ShouldReturnNull_WhenUserInactive()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var user = await SeedUser(db);
         user.IsActive = false;
         await db.SaveChangesAsync();
@@ -96,7 +92,7 @@ public class AuthServiceTests : IDisposable
     [Fact]
     public async Task ChangePasswordAsync_ShouldSucceed_WhenCurrentPasswordCorrect()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var user = await SeedUser(db);
         var service = new AuthService(db, _config);
 
@@ -112,7 +108,7 @@ public class AuthServiceTests : IDisposable
     [Fact]
     public async Task ChangePasswordAsync_ShouldFail_WhenCurrentPasswordWrong()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var user = await SeedUser(db);
         var service = new AuthService(db, _config);
 
@@ -124,7 +120,7 @@ public class AuthServiceTests : IDisposable
     [Fact]
     public async Task GetCurrentUserAsync_ShouldReturnUser()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var user = await SeedUser(db);
         var service = new AuthService(db, _config);
 
@@ -138,7 +134,7 @@ public class AuthServiceTests : IDisposable
     [Fact]
     public async Task GetCurrentUserAsync_ShouldReturnNull_WhenNotFound()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new AuthService(db, _config);
 
         var result = await service.GetCurrentUserAsync(999);
@@ -146,3 +142,5 @@ public class AuthServiceTests : IDisposable
         Assert.Null(result);
     }
 }
+
+

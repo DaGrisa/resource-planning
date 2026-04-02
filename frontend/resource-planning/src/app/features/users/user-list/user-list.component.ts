@@ -1,4 +1,5 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
@@ -11,7 +12,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { finalize } from 'rxjs';
 import { UserService } from '../../../core/services/user.service';
 import { User } from '../../../core/models';
-import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { confirmExecute$ } from '../../../shared/utils/confirm-action.util';
 
 @Component({
   selector: 'app-user-list',
@@ -89,12 +90,15 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
     </table>
     }
   `,
-  styles: [``]
+  styles: [``],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class UserListComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
   private userService = inject(UserService);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
+  private cdr = inject(ChangeDetectorRef);
 
   users: User[] = [];
   loading = false;
@@ -105,8 +109,12 @@ export class UserListComponent implements OnInit {
   load() {
     this.loading = true;
     this.userService.getAll().pipe(
-      finalize(() => this.loading = false)
-    ).subscribe(data => this.users = data);
+      finalize(() => this.loading = false),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(data => {
+      this.users = data;
+      this.cdr.markForCheck();
+    });
   }
 
   formatRole(role: string): string {
@@ -114,16 +122,13 @@ export class UserListComponent implements OnInit {
   }
 
   confirmDelete(user: User) {
-    const ref = this.dialog.open(ConfirmDialogComponent, {
-      data: { title: 'Deactivate User', message: `Deactivate "${user.username}"?`, confirmText: 'Deactivate' }
-    });
-    ref.afterClosed().subscribe(confirmed => {
-      if (confirmed) {
-        this.userService.delete(user.id).subscribe(() => {
-          this.snackBar.open('User deactivated', 'OK', { duration: 3000 });
-          this.load();
-        });
-      }
+    confirmExecute$(
+      this.dialog,
+      { title: 'Deactivate User', message: `Deactivate "${user.username}"?`, confirmText: 'Deactivate' },
+      () => this.userService.delete(user.id)
+    ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.snackBar.open('User deactivated', 'OK', { duration: 3000 });
+      this.load();
     });
   }
 }

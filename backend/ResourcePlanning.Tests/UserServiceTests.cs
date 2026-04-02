@@ -4,21 +4,13 @@ using ResourcePlanning.Api.Services;
 
 namespace ResourcePlanning.Tests;
 
-public class UserServiceTests : IDisposable
+public class UserServiceTests : ServiceTestBase
 {
-    private readonly TestDbContextFactory _factory;
-
-    public UserServiceTests()
-    {
-        _factory = new TestDbContextFactory();
-    }
-
-    public void Dispose() => _factory.Dispose();
 
     [Fact]
     public async Task CreateAsync_ShouldCreateUserWithRoles()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new UserService(db);
 
         var result = await service.CreateAsync(new UserCreateDto(
@@ -35,7 +27,7 @@ public class UserServiceTests : IDisposable
     [Fact]
     public async Task CreateAsync_ShouldHashPassword()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new UserService(db);
 
         await service.CreateAsync(new UserCreateDto("user1", "password123", "User 1", null, null));
@@ -48,7 +40,7 @@ public class UserServiceTests : IDisposable
     [Fact]
     public async Task GetAllAsync_ShouldReturnAllUsers()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new UserService(db);
 
         await service.CreateAsync(new UserCreateDto("user1", "pass1", "User 1", null, null));
@@ -62,7 +54,7 @@ public class UserServiceTests : IDisposable
     [Fact]
     public async Task GetByIdAsync_ShouldReturnUser()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new UserService(db);
 
         var created = await service.CreateAsync(new UserCreateDto("user1", "pass1", "User 1", null, new[] { "Admin" }));
@@ -77,7 +69,7 @@ public class UserServiceTests : IDisposable
     [Fact]
     public async Task GetByIdAsync_ShouldReturnNull_WhenNotFound()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new UserService(db);
 
         var result = await service.GetByIdAsync(999);
@@ -88,7 +80,7 @@ public class UserServiceTests : IDisposable
     [Fact]
     public async Task UpdateAsync_ShouldUpdateUserAndRoles()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new UserService(db);
 
         var created = await service.CreateAsync(new UserCreateDto("user1", "pass1", "User 1", null, new[] { "Admin" }));
@@ -107,7 +99,7 @@ public class UserServiceTests : IDisposable
     [Fact]
     public async Task DeleteAsync_ShouldSoftDelete()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         var service = new UserService(db);
 
         var created = await service.CreateAsync(new UserCreateDto("user1", "pass1", "User 1", null, null));
@@ -121,7 +113,7 @@ public class UserServiceTests : IDisposable
     [Fact]
     public async Task CreateAsync_WithLinkedEmployee()
     {
-        using var db = _factory.CreateContext();
+        using var db = Factory.CreateContext();
         db.Employees.Add(new Employee { FirstName = "John", LastName = "Doe", Email = "john@test.com" });
         await db.SaveChangesAsync();
 
@@ -132,3 +124,5 @@ public class UserServiceTests : IDisposable
         Assert.Equal("John Doe", result.EmployeeName);
     }
 }
+
+

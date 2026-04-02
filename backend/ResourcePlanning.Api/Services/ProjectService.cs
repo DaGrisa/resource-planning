@@ -34,9 +34,9 @@ public class ProjectService : IProjectService
 
         return new ProjectDetailDto(
             p.Id, p.Name, p.ProjectType.ToString(), p.ProjectLeadId,
-            p.ProjectLead != null ? p.ProjectLead.FirstName + " " + p.ProjectLead.LastName : null,
+            p.ProjectLead != null ? p.ProjectLead.FullName() : null,
             p.IsActive, p.StartDate, p.EndDate, p.CreatedAt, p.UpdatedAt,
-            p.Assignments.Select(a => new ProjectTeamMemberDto(a.EmployeeId, a.Employee.FirstName + " " + a.Employee.LastName)).ToList()
+            p.Assignments.Select(a => new ProjectTeamMemberDto(a.EmployeeId, a.Employee.FullName())).ToList()
         );
     }
 
@@ -88,24 +88,18 @@ public class ProjectService : IProjectService
 
     public async Task<bool> SetTeamAsync(int id, List<int> employeeIds)
     {
-        var project = await _db.Projects.Include(p => p.Assignments).FirstOrDefaultAsync(p => p.Id == id);
-        if (project == null) return false;
-
-        await using var tx = await _db.Database.BeginTransactionAsync();
-        _db.ProjectAssignments.RemoveRange(project.Assignments);
-        foreach (var empId in employeeIds)
-        {
-            _db.ProjectAssignments.Add(new ProjectAssignment { ProjectId = id, EmployeeId = empId });
-        }
-
-        await _db.SaveChangesAsync();
-        await tx.CommitAsync();
-        return true;
+        return await ServiceOperationHelpers.ReplaceRelationsAsync(
+            _db,
+            _db.Projects.Include(p => p.Assignments).Where(p => p.Id == id),
+            p => p.Assignments,
+            _db.ProjectAssignments,
+            employeeIds.Select(empId => new ProjectAssignment { ProjectId = id, EmployeeId = empId })
+        );
     }
 
     private static ProjectDto ToDto(Project p) => new(
         p.Id, p.Name, p.ProjectType.ToString(), p.ProjectLeadId,
-        p.ProjectLead != null ? p.ProjectLead.FirstName + " " + p.ProjectLead.LastName : null,
+        p.ProjectLead != null ? p.ProjectLead.FullName() : null,
         p.IsActive, p.StartDate, p.EndDate, p.CreatedAt, p.UpdatedAt
     );
 }

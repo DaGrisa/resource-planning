@@ -17,7 +17,7 @@ import { finalize } from 'rxjs';
 import { ProjectService } from '../../../core/services/project.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { Project, ProjectType } from '../../../core/models';
-import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { confirmExecute$ } from '../../../shared/utils/confirm-action.util';
 
 @Component({
   selector: 'app-project-list',
@@ -138,16 +138,13 @@ export class ProjectListComponent implements OnInit {
   }
 
   confirmDelete(project: Project) {
-    const ref = this.dialog.open(ConfirmDialogComponent, {
-      data: { title: 'Deactivate Project', message: `Deactivate "${project.name}"?`, confirmText: 'Deactivate' }
-    });
-    ref.afterClosed().subscribe(confirmed => {
-      if (confirmed) {
-        this.projectService.delete(project.id).subscribe(() => {
-          this.snackBar.open('Project deactivated', 'OK', { duration: 3000 });
-          this.load();
-        });
-      }
+    confirmExecute$(
+      this.dialog,
+      { title: 'Deactivate Project', message: `Deactivate "${project.name}"?`, confirmText: 'Deactivate' },
+      () => this.projectService.delete(project.id)
+    ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.snackBar.open('Project deactivated', 'OK', { duration: 3000 });
+      this.load();
     });
   }
 }
