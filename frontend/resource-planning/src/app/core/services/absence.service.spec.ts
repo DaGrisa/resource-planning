@@ -29,7 +29,7 @@ describe('AbsenceService', () => {
       r.params.get('weekTo') === '10'
     );
     expect(req.request.method).toBe('GET');
-    req.flush([{ id: 1, employeeId: 1, employeeName: 'Test', calendarWeek: 6, year: 2026, hours: 40, note: 'Vacation' }]);
+    req.flush([{ id: 1, employeeId: 1, employeeName: 'Test', calendarWeek: 6, year: 2026, type: 'Regular', hours: 40, note: 'Vacation' }]);
   });
 
   it('should pass optional filters', () => {
@@ -44,7 +44,7 @@ describe('AbsenceService', () => {
 
   it('should upsert absences', () => {
     const absences = [
-      { employeeId: 1, calendarWeek: 6, year: 2026, hours: 40, note: 'Vacation' }
+      { employeeId: 1, calendarWeek: 6, year: 2026, hours: 40, note: 'Vacation', type: 'Regular' as const }
     ];
 
     service.upsert(absences).subscribe();
@@ -60,6 +60,32 @@ describe('AbsenceService', () => {
 
     const req = httpMock.expectOne(r => r.url.includes('/absences/5'));
     expect(req.request.method).toBe('DELETE');
+    req.flush(null);
+  });
+
+  it('should fetch holidays', () => {
+    service.getHolidays({ year: 2026, weekFrom: 1, weekTo: 10 }).subscribe(holidays => {
+      expect(holidays.length).toBe(1);
+    });
+
+    const req = httpMock.expectOne(r =>
+      r.url.includes('/absences/holidays') &&
+      r.params.get('year') === '2026' &&
+      r.params.get('weekFrom') === '1' &&
+      r.params.get('weekTo') === '10'
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush([{ date: '2026-01-01', calendarWeek: 1, year: 2026, note: 'Public Holiday' }]);
+  });
+
+  it('should upsert holidays', () => {
+    const holidays = [{ date: '2026-04-27', note: 'Public Holiday' }];
+
+    service.upsertHolidays(holidays).subscribe();
+
+    const req = httpMock.expectOne(r => r.url.includes('/absences/holidays'));
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual(holidays);
     req.flush(null);
   });
 });

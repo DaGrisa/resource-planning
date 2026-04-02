@@ -57,3 +57,31 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+
+## Planning status thresholds
+
+Planning status colors shown in overview screens are calculated by the backend using appsettings keys:
+
+- `Planning:EmployeeOptimalThresholdPercent`
+- `Planning:ProjectOptimalThresholdMinPercent`
+- `Planning:ProjectOptimalThresholdMaxPercent`
+
+Default values are configured in `backend/ResourcePlanning.Api/appsettings*.json`.
+
+Project Planning and Project Overview read project threshold values from `GET /api/planning/project-thresholds`, so legend labels and project budget status colors match backend configuration.
+
+Planning tooltips in Employee Planning, Project Planning, Employee Overview, and Project Overview show each absence/allocation item on a separate line.
+
+In Employee Planning and Employee Overview, absence tooltip entries are split into `Holiday` and `Regular absence` so global holidays are clearly distinguishable.
+
+Absences supports global holidays via the **Add Holiday** action; holidays are single-day entries and applied to all active employees.
+
+Editing an existing holiday can also change its date; the frontend sends the original date in the upsert payload so the backend replaces the old holiday entries correctly.
+
+Holiday hours are computed automatically as `1/5` of each employee's weekly hours, so no manual holiday-hours input is required.
+
+The selected value of the **To Week** filter is persisted in localStorage and restored across page views that provide this filter (bulk plan dialogs are excluded).
+
+Project Planning includes a **Bulk Plan** action to set a weekly budget for a selected project over a chosen week range.
+
+Employee Planning **Bulk Plan** accepts `0` hours, which clears allocations for the selected project/week range when saved.

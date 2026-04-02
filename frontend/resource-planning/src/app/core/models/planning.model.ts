@@ -31,6 +31,8 @@ export interface WeekSummary {
   status: 'under' | 'optimal' | 'over';
   allocations: ProjectAllocationDetail[];
   absenceHours: number;
+  regularAbsenceHours: number;
+  holidayHours: number;
 }
 
 export interface ProjectAllocationDetail {
@@ -68,4 +70,9 @@ export interface ProjectBudgetUpsertDto {
   calendarWeek: number;
   year: number;
   budgetedHours: number;
+}
+
+export interface ProjectPlanningThresholds {
+  optimalMinPercent: number;
+  optimalMaxPercent: number;
 }

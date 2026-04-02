@@ -6,45 +6,40 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
-import { MatIconModule } from '@angular/material/icon';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
-import { AllocationUpsertDto, EmployeeWeekOverview } from '../../../core/models';
-import { Project } from '../../../core/models';
+import { ProjectBudgetUpsertDto, ProjectWeekOverview } from '../../../core/models';
 import { getISOWeek, getWeekStart } from '../../../core/utils/week.utils';
 
-export interface BulkAllocationData {
-  overview: EmployeeWeekOverview[];
-  projects: Project[];
+export interface BulkBudgetData {
+  overview: ProjectWeekOverview[];
   year: number;
   weekFrom: number;
   weekTo: number;
 }
 
 @Component({
-  selector: 'app-bulk-allocation',
+  selector: 'app-bulk-budget',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
-    MatButtonModule, MatSelectModule, MatIconModule, MatDatepickerModule, MatNativeDateModule
+    CommonModule,
+    FormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatSelectModule,
+    MatDatepickerModule,
+    MatNativeDateModule
   ],
   template: `
-    <h2 mat-dialog-title>Bulk Plan Allocation</h2>
+    <h2 mat-dialog-title>Bulk Set Budget</h2>
     <mat-dialog-content>
-      <mat-form-field class="full-width">
-        <mat-label>Employee</mat-label>
-        <mat-select [(ngModel)]="selectedEmployeeId" (selectionChange)="onEmployeeChange()">
-          @for (emp of data.overview; track emp.employeeId) {
-            <mat-option [value]="emp.employeeId">{{ emp.employeeName }} ({{ emp.weeklyHours }}h)</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-
       <mat-form-field class="full-width">
         <mat-label>Project</mat-label>
         <mat-select [(ngModel)]="selectedProjectId">
-          @for (p of activeProjects; track p.id) {
-            <mat-option [value]="p.id">{{ p.name }}</mat-option>
+          @for (project of data.overview; track project.projectId) {
+            <mat-option [value]="project.projectId">{{ project.projectName }}</mat-option>
           }
         </mat-select>
       </mat-form-field>
@@ -68,13 +63,13 @@ export interface BulkAllocationData {
       </div>
 
       <mat-form-field class="full-width">
-        <mat-label>Hours per week</mat-label>
-        <input matInput type="number" [(ngModel)]="hoursPerWeek" min="0" step="0.5" />
+        <mat-label>Budget hours per week</mat-label>
+        <input matInput type="number" [(ngModel)]="budgetHours" min="0" step="1" />
       </mat-form-field>
 
-      @if (selectedEmployeeId && selectedProjectId && fromWeek <= toWeek) {
+      @if (selectedProjectId && fromWeek <= toWeek) {
         <div class="summary">
-          Will create {{ weekCount }} allocation(s) for CW {{ fromWeek }}–{{ toWeek }} ({{ hoursPerWeek }}h each)
+          Will set {{ budgetHours }}h for {{ weekCount }} week(s), CW {{ fromWeek }}–{{ toWeek }}
         </div>
       }
     </mat-dialog-content>
@@ -91,30 +86,24 @@ export interface BulkAllocationData {
     .summary { margin-top: 8px; padding: 8px; background: #e3f2fd; border-radius: 4px; font-size: 13px; }
   `]
 })
-export class BulkAllocationComponent implements OnInit {
-  data = inject<BulkAllocationData>(MAT_DIALOG_DATA);
-  private dialogRef = inject(MatDialogRef<BulkAllocationComponent>);
+export class BulkBudgetComponent implements OnInit {
+  data = inject<BulkBudgetData>(MAT_DIALOG_DATA);
+  private dialogRef = inject(MatDialogRef<BulkBudgetComponent>);
 
-  selectedEmployeeId?: number;
   selectedProjectId?: number;
-  fromWeek: number = 0;
-  toWeek: number = 0;
+  fromWeek = 0;
+  toWeek = 0;
   fromDate: Date = new Date();
   toDate: Date = new Date();
-  hoursPerWeek: number = 0;
-  year: number = new Date().getFullYear();
-
-  get activeProjects(): Project[] {
-    return this.data.projects.filter(p => p.isActive);
-  }
+  budgetHours = 0;
+  year = new Date().getFullYear();
 
   get weekCount(): number {
     return this.toWeek >= this.fromWeek ? this.toWeek - this.fromWeek + 1 : 0;
   }
 
   get isValid(): boolean {
-    return !!this.selectedEmployeeId && !!this.selectedProjectId &&
-      this.fromWeek > 0 && this.toWeek >= this.fromWeek && this.hoursPerWeek >= 0;
+    return !!this.selectedProjectId && this.fromWeek > 0 && this.toWeek >= this.fromWeek && this.budgetHours >= 0;
   }
 
   ngOnInit() {
@@ -123,13 +112,6 @@ export class BulkAllocationComponent implements OnInit {
     this.toWeek = this.data.weekTo;
     this.fromDate = getWeekStart(this.year, this.fromWeek);
     this.toDate = getWeekStart(this.year, this.toWeek);
-  }
-
-  onEmployeeChange() {
-    const emp = this.data.overview.find(e => e.employeeId === this.selectedEmployeeId);
-    if (emp) {
-      this.hoursPerWeek = emp.weeklyHours;
-    }
   }
 
   onFromChange(event: any) {
@@ -149,17 +131,16 @@ export class BulkAllocationComponent implements OnInit {
   confirm() {
     if (!this.isValid) return;
 
-    const allocations: AllocationUpsertDto[] = [];
-    for (let w = this.fromWeek; w <= this.toWeek; w++) {
-      allocations.push({
-        employeeId: this.selectedEmployeeId!,
+    const budgets: ProjectBudgetUpsertDto[] = [];
+    for (let week = this.fromWeek; week <= this.toWeek; week++) {
+      budgets.push({
         projectId: this.selectedProjectId!,
-        calendarWeek: w,
+        calendarWeek: week,
         year: this.year,
-        plannedHours: this.hoursPerWeek
+        budgetedHours: this.budgetHours
       });
     }
 
-    this.dialogRef.close(allocations);
+    this.dialogRef.close(budgets);
   }
 }

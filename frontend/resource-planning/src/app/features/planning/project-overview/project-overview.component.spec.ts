@@ -21,14 +21,23 @@ describe('ProjectOverviewComponent', () => {
     httpMock = TestBed.inject(HttpTestingController);
   });
 
+  function flushProjectThresholds() {
+    httpMock.expectOne(req => req.url.includes('/planning/project-thresholds')).flush({
+      optimalMinPercent: 90,
+      optimalMaxPercent: 110
+    });
+  }
+
   afterEach(() => httpMock.verify());
 
   it('should create', () => {
+    flushProjectThresholds();
     httpMock.expectOne(req => req.url.includes('/planning/project-overview')).flush([]);
     expect(component).toBeTruthy();
   });
 
   it('should load project overview on init', () => {
+    flushProjectThresholds();
     const mockData = [{
       projectId: 1, projectName: 'TestProject', projectType: 'Customer',
       weeks: [{
@@ -43,11 +52,13 @@ describe('ProjectOverviewComponent', () => {
   });
 
   it('should default showPercentage to true', () => {
+    flushProjectThresholds();
     httpMock.expectOne(req => req.url.includes('/planning/project-overview')).flush([]);
     expect(component.showPercentage).toBe(true);
   });
 
   it('should generate correct tooltip', () => {
+    flushProjectThresholds();
     httpMock.expectOne(req => req.url.includes('/planning/project-overview')).flush([]);
     const week: any = {
       allocations: [
@@ -61,6 +72,7 @@ describe('ProjectOverviewComponent', () => {
   });
 
   it('should build PDF table data correctly', () => {
+    flushProjectThresholds();
     httpMock.expectOne(req => req.url.includes('/planning/project-overview')).flush([]);
     const mockProj: any = {
       projectId: 1,

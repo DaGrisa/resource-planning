@@ -24,6 +24,7 @@ import { Department, Project } from '../../../core/models';
 import { CellEditorComponent } from './cell-editor.component';
 import { BulkAllocationComponent } from './bulk-allocation.component';
 import { getISOWeek, getWeekStart, formatShortDate } from '../../../core/utils/week.utils';
+import { loadStoredToWeek, saveStoredToWeek } from '../../../core/utils/week-filter-storage.utils';
 
 @Component({
   selector: 'app-capacity-grid',
@@ -115,7 +116,8 @@ import { getISOWeek, getWeekStart, formatShortDate } from '../../../core/utils/w
                     [class.status-over]="week.status === 'over'"
                     [class.status-empty]="week.totalPlannedHours === 0"
                     (click)="editCell(emp, week)"
-                    [matTooltip]="getCellTooltip(emp, week)">
+                  [matTooltip]="getCellTooltip(emp, week)"
+                  matTooltipClass="multiline-tooltip">
                   <div class="cell-value">
                     {{ showPercentage ? (week.percentage | number:'1.0-0') + '%' : (week.totalPlannedHours | number:'1.1-1') + 'h' }}
                   </div>
@@ -162,7 +164,7 @@ export class CapacityGridComponent implements OnInit {
 
   year = new Date().getFullYear();
   weekFrom = getISOWeek(new Date());
-  weekTo = getISOWeek(new Date()) + 5;
+  weekTo = loadStoredToWeek(getISOWeek(new Date()) + 5);
   weekFromDate = getWeekStart(this.year, this.weekFrom);
   weekToDate = getWeekStart(this.year, this.weekTo);
   departmentId?: number;
@@ -211,6 +213,7 @@ export class CapacityGridComponent implements OnInit {
     const date = event.value as Date;
     if (!date) return;
     this.weekTo = getISOWeek(date);
+    saveStoredToWeek(this.weekTo);
     this.weekToDate = getWeekStart(this.year, this.weekTo);
     this.loadData();
   }
@@ -241,7 +244,7 @@ export class CapacityGridComponent implements OnInit {
       if (!weekData) return;
 
       weekData.allocations = result;
-      weekData.totalPlannedHours = result.reduce((sum, a) => sum + a.plannedHours, 0);
+      weekData.totalPlannedHours = result.reduce((sum, a) => sum + a.plannedHours, 0) + weekData.absenceHours;
       weekData.percentage = emp.weeklyHours > 0 ? weekData.totalPlannedHours / emp.weeklyHours * 100 : 0;
       weekData.status = weekData.percentage > 100 ? 'over' : weekData.percentage >= 80 ? 'optimal' : 'under';
 
@@ -339,10 +342,14 @@ export class CapacityGridComponent implements OnInit {
 
   getCellTooltip(emp: EmployeeWeekOverview, week: WeekSummary): string {
     const lines: string[] = [];
-    if (week.absenceHours > 0) lines.push(`Absence: ${week.absenceHours}h`);
+    if (week.holidayHours > 0) lines.push(`Holiday: ${week.holidayHours}h`);
+    if (week.regularAbsenceHours > 0) lines.push(`Regular absence: ${week.regularAbsenceHours}h`);
+    if (week.absenceHours > 0 && week.holidayHours <= 0 && week.regularAbsenceHours <= 0) {
+      lines.push(`Absence: ${week.absenceHours}h`);
+    }
     if (week.allocations.length > 0) {
       lines.push(...week.allocations.map(a => `${a.projectName}: ${a.plannedHours}h`));
     }
-    return lines.length > 0 ? lines.join('\n') : 'Click to add allocations';
+    return lines.length > 0 ? `${lines.join('\n')}\n` : 'Click to add allocations';
   }
 }

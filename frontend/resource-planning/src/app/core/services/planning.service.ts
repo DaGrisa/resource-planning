@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { AllocationUpsertDto, CapacityAllocation, EmployeeWeekOverview, ProjectWeekOverview, ProjectBudgetUpsertDto } from '../models';
+import { AllocationUpsertDto, CapacityAllocation, EmployeeWeekOverview, ProjectWeekOverview, ProjectBudgetUpsertDto, ProjectPlanningThresholds } from '../models';
 import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
@@ -63,6 +63,10 @@ export class PlanningService {
       .set('weekFrom', params.weekFrom)
       .set('weekTo', params.weekTo);
     return this.http.get<ProjectWeekOverview[]>(`${this.url}/project-overview`, { params: httpParams });
+  }
+
+  getProjectThresholds(): Observable<ProjectPlanningThresholds> {
+    return this.http.get<ProjectPlanningThresholds>(`${this.url}/project-thresholds`);
   }
 
   upsertProjectBudgets(budgets: ProjectBudgetUpsertDto[]): Observable<void> {

@@ -106,7 +106,7 @@ In `appsettings.Development.json` this is set to `true` so a local development e
 - **Project Planning**: Plan capacity from the project perspective with weekly budgets
 - **Planning Overview**: Read-only employee utilization view across weeks
 - **Project Overview**: Read-only project utilization view across weeks
-- **Absence Management**: Track employee absences per calendar week
+- **Absence Management**: Track employee absences per calendar week and manage single-day holidays that apply to all employees (auto-counted as 1/5 weekly hours)
 
 ## Roles
 
@@ -155,13 +155,21 @@ Before deploying, set the following values in `backend/ResourcePlanning.Api/apps
   "AllowedOrigins": [ "https://your-frontend-domain.com" ]
 },
 "Planning": {
-  "OptimalThresholdPercent": 80
+  "EmployeeOptimalThresholdPercent": 80,
+  "ProjectOptimalThresholdMinPercent": 90,
+  "ProjectOptimalThresholdMaxPercent": 110
 }
 ```
 
 The application will refuse to start if `Jwt:Key` is still the placeholder value.
 
-`Planning:OptimalThresholdPercent` controls the minimum utilization percentage at which a week is considered **optimal** (green). Below this threshold the week is shown as **under** (orange). Defaults to `80`.
+Planning thresholds are split by overview type:
+
+- `Planning:EmployeeOptimalThresholdPercent`: minimum utilization percentage for employee week status **optimal** (default `80`); above `100` remains **over**.
+- `Planning:ProjectOptimalThresholdMinPercent`: lower bound for project week status **optimal** (default `90`).
+- `Planning:ProjectOptimalThresholdMaxPercent`: upper bound for project week status **optimal** (default `110`).
+
+For projects, percentages below min are **under**, above max are **over**, and within `[min, max]` are **optimal**.
 
 ### Database providers
 

@@ -9,6 +9,7 @@ public interface IPlanningService
     Task UpsertAllocationsAsync(List<AllocationUpsertDto> allocations);
     Task<List<EmployeeWeekOverviewDto>> GetOverviewAsync(int year, int weekFrom, int weekTo, int? departmentId = null);
     Task<EmployeeWeekOverviewDto?> GetEmployeeAllocationsAsync(int employeeId, int year, int weekFrom, int weekTo);
+    Task<ProjectPlanningThresholdsDto> GetProjectThresholdsAsync();
     Task<List<ProjectWeekOverviewDto>> GetProjectOverviewAsync(int year, int weekFrom, int weekTo);
     Task UpsertProjectBudgetsAsync(List<ProjectWeeklyBudgetUpsertDto> budgets);
 }

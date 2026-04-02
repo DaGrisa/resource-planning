@@ -13,14 +13,16 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
-import { finalize } from 'rxjs';
+import { finalize, forkJoin } from 'rxjs';
 import { AbsenceService } from '../../../core/services/absence.service';
 import { EmployeeService } from '../../../core/services/employee.service';
 import { DepartmentService } from '../../../core/services/department.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { Absence, Employee, Department, AbsenceUpsertDto } from '../../../core/models';
+import { Absence, Employee, Department, AbsenceUpsertDto, Holiday, HolidayUpsertDto } from '../../../core/models';
 import { AbsenceFormComponent, AbsenceFormData } from '../absence-form/absence-form.component';
+import { HolidayFormComponent, HolidayFormData } from '../holiday-form/holiday-form.component';
 import { getISOWeek, getWeekStart, formatShortDate } from '../../../core/utils/week.utils';
+import { loadStoredToWeek, saveStoredToWeek } from '../../../core/utils/week-filter-storage.utils';
 
 interface AbsenceGridRow {
   employeeId: number;
@@ -41,9 +43,14 @@ interface AbsenceGridRow {
   template: `
     <div class="page-header">
       <h1>Absences</h1>
-      <button mat-flat-button (click)="openForm()">
-        <mat-icon>add</mat-icon> Add Absence
-      </button>
+      <div class="header-actions">
+        <button mat-flat-button (click)="openForm()">
+          <mat-icon>add</mat-icon> Add Absence
+        </button>
+        <button mat-stroked-button (click)="openHolidayForm()">
+          <mat-icon>event</mat-icon> Add Holiday
+        </button>
+      </div>
     </div>
 
     <div class="filters">
@@ -88,6 +95,38 @@ interface AbsenceGridRow {
       <div class="spinner"><mat-spinner diameter="40"></mat-spinner></div>
     }
 
+    @if (!loading && holidays.length > 0) {
+      <div class="holiday-section">
+        <h2>Holidays (applies to all employees)</h2>
+        <table class="holiday-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Week</th>
+              <th>Effect</th>
+              <th>Note</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (holiday of holidays; track holiday.date) {
+              <tr>
+                <td>{{ holiday.date }}</td>
+                <td>CW {{ holiday.calendarWeek }} ({{ getWeekStartDate(holiday.calendarWeek) }})</td>
+                <td>Auto: 1/5 of weekly hours per employee</td>
+                <td>{{ holiday.note || '-' }}</td>
+                <td>
+                  <button mat-button (click)="openHolidayForm(holiday)">
+                    <mat-icon>edit</mat-icon> Edit
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
     @if (!loading && gridRows.length === 0) {
       <div class="empty-state">No absences found for this period.</div>
     }
@@ -112,6 +151,7 @@ interface AbsenceGridRow {
               </td>
               @for (w of weeks; track w) {
                 <td class="week-cell-interactive"
+                    [class.status-none]="!row.weeks.has(w)"
                     [class.has-absence]="row.weeks.has(w)"
                     (click)="onCellClick(row, w)"
                     [matTooltip]="getCellTooltip(row, w)">
@@ -128,6 +168,11 @@ interface AbsenceGridRow {
     }
   `,
   styles: [`
+    .header-actions { display: flex; gap: 8px; }
+    .holiday-section { margin-bottom: 16px; }
+    .holiday-section h2 { margin: 0 0 8px; font-size: 16px; }
+    .holiday-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    .holiday-table th, .holiday-table td { text-align: left; padding: 8px; border-bottom: 1px solid #e0e0e0; }
     .has-absence { background-color: #e3f2fd; font-weight: 500; }
     .has-absence:hover { background-color: #bbdefb; }
   `],
@@ -144,6 +189,7 @@ export class AbsenceListComponent implements OnInit {
   private cdr = inject(ChangeDetectorRef);
 
   absences: Absence[] = [];
+  holidays: Holiday[] = [];
   employees: Employee[] = [];
   departments: Department[] = [];
   gridRows: AbsenceGridRow[] = [];
@@ -151,7 +197,7 @@ export class AbsenceListComponent implements OnInit {
 
   year = new Date().getFullYear();
   weekFrom = getISOWeek(new Date());
-  weekTo = getISOWeek(new Date()) + 5;
+  weekTo = loadStoredToWeek(getISOWeek(new Date()) + 5);
   weekFromDate = getWeekStart(this.year, this.weekFrom);
   weekToDate = getWeekStart(this.year, this.weekTo);
   departmentId?: number;
@@ -171,17 +217,26 @@ export class AbsenceListComponent implements OnInit {
 
   load() {
     this.loading = true;
-    this.absenceService.getAll({
-      year: this.year,
-      weekFrom: this.weekFrom,
-      weekTo: this.weekTo,
-      employeeId: this.employeeId,
-      departmentId: this.departmentId
+    forkJoin({
+      absences: this.absenceService.getAll({
+        year: this.year,
+        weekFrom: this.weekFrom,
+        weekTo: this.weekTo,
+        employeeId: this.employeeId,
+        departmentId: this.departmentId,
+        type: 'Regular'
+      }),
+      holidays: this.absenceService.getHolidays({
+        year: this.year,
+        weekFrom: this.weekFrom,
+        weekTo: this.weekTo
+      })
     }).pipe(
       finalize(() => this.loading = false),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(data => {
-      this.absences = data;
+      this.absences = data.absences;
+      this.holidays = data.holidays;
       this.buildGrid();
       this.cdr.markForCheck();
     });
@@ -224,6 +279,7 @@ export class AbsenceListComponent implements OnInit {
     const date = event.value as Date;
     if (!date) return;
     this.weekTo = getISOWeek(date);
+    saveStoredToWeek(this.weekTo);
     this.weekToDate = getWeekStart(this.year, this.weekTo);
     this.load();
   }
@@ -247,6 +303,24 @@ export class AbsenceListComponent implements OnInit {
       if (!result) return;
       this.absenceService.upsert(result).subscribe(() => {
         this.snackBar.open('Absences saved', 'OK', { duration: 3000 });
+        this.load();
+      });
+    });
+  }
+
+  openHolidayForm(existingHoliday?: Holiday) {
+    const ref = this.dialog.open(HolidayFormComponent, {
+      width: '500px',
+      data: {
+        year: this.year,
+        existingHoliday
+      } as HolidayFormData
+    });
+
+    ref.afterClosed().subscribe((result: HolidayUpsertDto[] | undefined) => {
+      if (!result) return;
+      this.absenceService.upsertHolidays(result).subscribe(() => {
+        this.snackBar.open('Holidays saved', 'OK', { duration: 3000 });
         this.load();
       });
     });

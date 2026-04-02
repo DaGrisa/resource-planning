@@ -10,6 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
@@ -17,6 +18,8 @@ import { PlanningService } from '../../../core/services/planning.service';
 import { finalize } from 'rxjs';
 import { ProjectWeekOverview, ProjectWeekSummary, ProjectBudgetUpsertDto } from '../../../core/models';
 import { getISOWeek, getWeekStart, formatShortDate } from '../../../core/utils/week.utils';
+import { loadStoredToWeek, saveStoredToWeek } from '../../../core/utils/week-filter-storage.utils';
+import { BulkBudgetComponent } from './bulk-budget.component';
 
 @Component({
   selector: 'app-project-planning',
@@ -24,13 +27,16 @@ import { getISOWeek, getWeekStart, formatShortDate } from '../../../core/utils/w
   imports: [
     CommonModule, FormsModule,
     MatButtonModule, MatIconModule, MatSelectModule, MatFormFieldModule, MatInputModule,
-    MatSlideToggleModule, MatSnackBarModule, MatTooltipModule, MatProgressSpinnerModule,
+    MatSlideToggleModule, MatSnackBarModule, MatTooltipModule, MatDialogModule, MatProgressSpinnerModule,
     MatDatepickerModule, MatNativeDateModule
   ],
   template: `
     <div class="page-header">
       <h1>Project Planning</h1>
       <div class="header-actions">
+        <button mat-stroked-button (click)="openBulkBudget()">
+          <mat-icon>date_range</mat-icon> Bulk Plan
+        </button>
         @if (isDirty) {
           <button mat-flat-button (click)="save()">
             <mat-icon>save</mat-icon> Save Budgets
@@ -94,7 +100,8 @@ import { getISOWeek, getWeekStart, formatShortDate } from '../../../core/utils/w
                       [class.status-under]="week.status === 'under'"
                       [class.status-optimal]="week.status === 'optimal'"
                       [class.status-over]="week.status === 'over'"
-                      [matTooltip]="getCellTooltip(proj, week)">
+                      [matTooltip]="getCellTooltip(proj, week)"
+                      matTooltipClass="multiline-tooltip">
                     <div class="budget-row">
                       <input type="number" class="budget-input" min="0" step="1"
                         [ngModel]="week.budgetedHours"
@@ -117,9 +124,9 @@ import { getISOWeek, getWeekStart, formatShortDate } from '../../../core/utils/w
 
       <div class="legend">
         <span class="legend-item"><span class="dot status-none"></span> No budget</span>
-        <span class="legend-item"><span class="dot status-under"></span> Under (&lt;80%)</span>
-        <span class="legend-item"><span class="dot status-optimal"></span> Optimal (80-100%)</span>
-        <span class="legend-item"><span class="dot status-over"></span> Over (&gt;100%)</span>
+        <span class="legend-item"><span class="dot status-under"></span> Under (&lt;{{ projectOptimalThresholdMin }}%)</span>
+        <span class="legend-item"><span class="dot status-optimal"></span> Optimal ({{ projectOptimalThresholdMin }}-{{ projectOptimalThresholdMax }}%)</span>
+        <span class="legend-item"><span class="dot status-over"></span> Over (&gt;{{ projectOptimalThresholdMax }}%)</span>
       </div>
     }
 
@@ -143,6 +150,7 @@ export class ProjectPlanningComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
   private planningService = inject(PlanningService);
   private snackBar = inject(MatSnackBar);
+  private dialog = inject(MatDialog);
   private cdr = inject(ChangeDetectorRef);
 
   overview: ProjectWeekOverview[] = [];
@@ -150,11 +158,13 @@ export class ProjectPlanningComponent implements OnInit {
 
   year = new Date().getFullYear();
   weekFrom = getISOWeek(new Date());
-  weekTo = getISOWeek(new Date()) + 5;
+  weekTo = loadStoredToWeek(getISOWeek(new Date()) + 5);
   weekFromDate = getWeekStart(this.year, this.weekFrom);
   weekToDate = getWeekStart(this.year, this.weekTo);
   showPercentage = true;
   isDirty = false;
+  projectOptimalThresholdMin = 90;
+  projectOptimalThresholdMax = 110;
 
   pendingChanges: Map<string, ProjectBudgetUpsertDto> = new Map();
 
@@ -165,6 +175,11 @@ export class ProjectPlanningComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.planningService.getProjectThresholds().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(thresholds => {
+      this.projectOptimalThresholdMin = thresholds.optimalMinPercent;
+      this.projectOptimalThresholdMax = thresholds.optimalMaxPercent;
+      this.cdr.markForCheck();
+    });
     this.loadData();
   }
 
@@ -195,6 +210,7 @@ export class ProjectPlanningComponent implements OnInit {
     const date = event.value as Date;
     if (!date) return;
     this.weekTo = getISOWeek(date);
+    saveStoredToWeek(this.weekTo);
     this.weekToDate = getWeekStart(this.year, this.weekTo);
     this.loadData();
   }
@@ -216,7 +232,15 @@ export class ProjectPlanningComponent implements OnInit {
 
     // Recompute status
     week.percentage = hours > 0 ? week.allocatedHours / hours * 100 : 0;
-    week.status = hours <= 0 ? 'none' : week.percentage > 100 ? 'over' : week.percentage >= 80 ? 'optimal' : 'under';
+    const roundedPercentageForStatus = Math.round(week.percentage);
+    week.percentage = Math.round(week.percentage * 10) / 10;
+    week.status = hours <= 0
+      ? 'none'
+      : roundedPercentageForStatus > this.projectOptimalThresholdMax
+        ? 'over'
+        : roundedPercentageForStatus >= this.projectOptimalThresholdMin
+          ? 'optimal'
+          : 'under';
 
     const key = `${proj.projectId}-${week.calendarWeek}-${week.year}`;
     this.pendingChanges.set(key, {
@@ -229,6 +253,37 @@ export class ProjectPlanningComponent implements OnInit {
     this.isDirty = this.pendingChanges.size > 0;
   }
 
+  openBulkBudget() {
+    const ref = this.dialog.open(BulkBudgetComponent, {
+      width: '500px',
+      data: {
+        overview: this.overview,
+        year: this.year,
+        weekFrom: this.weekFrom,
+        weekTo: this.weekTo
+      }
+    });
+
+    ref.afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result: ProjectBudgetUpsertDto[] | undefined) => {
+      if (!result || result.length === 0) return;
+
+      for (const budget of result) {
+        const project = this.overview.find(p => p.projectId === budget.projectId);
+        const week = project?.weeks.find(w => w.calendarWeek === budget.calendarWeek && w.year === budget.year);
+
+        if (project && week) {
+          this.onBudgetChange(project, week, budget.budgetedHours);
+        } else {
+          const key = `${budget.projectId}-${budget.calendarWeek}-${budget.year}`;
+          this.pendingChanges.set(key, budget);
+        }
+      }
+
+      this.isDirty = this.pendingChanges.size > 0;
+      this.cdr.markForCheck();
+    });
+  }
+
   save() {
     const budgets = Array.from(this.pendingChanges.values());
     this.planningService.upsertProjectBudgets(budgets).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
@@ -238,8 +293,13 @@ export class ProjectPlanningComponent implements OnInit {
   }
 
   getCellTooltip(proj: ProjectWeekOverview, week: ProjectWeekSummary): string {
-    if (week.allocations.length === 0) return `Budget: ${week.budgetedHours}h — No allocations`;
-    const lines = week.allocations.map(a => `${a.employeeName}: ${a.plannedHours}h`);
-    return `Budget: ${week.budgetedHours}h\n${lines.join('\n')}`;
+    const lines = [`Budget: ${week.budgetedHours}h`];
+    if (week.allocations.length === 0) {
+      lines.push('No allocations');
+    } else {
+      lines.push(...week.allocations.map(a => `${a.employeeName}: ${a.plannedHours}h`));
+    }
+
+    return `${lines.join('\n')}\n`;
   }
 }

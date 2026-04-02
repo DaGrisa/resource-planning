@@ -73,4 +73,15 @@ describe('PlanningService', () => {
     expect(req.request.method).toBe('GET');
     req.flush({ employeeId: 1, employeeName: 'Test', weeks: [] });
   });
+
+  it('should get project thresholds', () => {
+    service.getProjectThresholds().subscribe(thresholds => {
+      expect(thresholds.optimalMinPercent).toBe(90);
+      expect(thresholds.optimalMaxPercent).toBe(110);
+    });
+
+    const req = httpMock.expectOne(r => r.url.includes('/planning/project-thresholds'));
+    expect(req.request.method).toBe('GET');
+    req.flush({ optimalMinPercent: 90, optimalMaxPercent: 110 });
+  });
 });

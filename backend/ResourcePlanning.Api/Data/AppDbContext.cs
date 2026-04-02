@@ -99,7 +99,13 @@ public class AppDbContext : DbContext
         // Absence
         modelBuilder.Entity<Absence>(e =>
         {
-            e.HasIndex(x => new { x.EmployeeId, x.CalendarWeek, x.Year }).IsUnique();
+            e.HasIndex(x => new { x.EmployeeId, x.CalendarWeek, x.Year, x.Type })
+                .IsUnique()
+                .HasFilter("HolidayDate IS NULL");
+            e.HasIndex(x => new { x.EmployeeId, x.Type, x.HolidayDate })
+                .IsUnique()
+                .HasFilter("HolidayDate IS NOT NULL");
+            e.Property(x => x.Type).HasConversion<string>();
             e.Property(x => x.Hours).HasPrecision(5, 2);
             e.HasOne(x => x.Employee)
                 .WithMany(emp => emp.Absences)

@@ -34,8 +34,9 @@ frontend/resource-planning/      # Angular workspace
     features/employees/          # employee-list/, employee-form/
     features/departments/        # department-list/, department-form/
     features/projects/           # project-list/, project-form/, project-team/
-    features/planning/           # capacity-grid/ (+ cell-editor, bulk-allocation), project-planning/, planning-overview/, project-overview/
+    features/planning/           # capacity-grid/ (+ cell-editor, bulk-allocation), project-planning/ (+ bulk-budget), planning-overview/, project-overview/
     features/absences/           # absence-list/, absence-form/
+                                  # holiday-form/
     features/dashboard/          # dashboard component
     features/my-planning/        # my-planning component (per-employee schedule, visible to all roles)
     features/users/              # user-list/, user-form/
@@ -109,13 +110,21 @@ Four roles defined as an enum (`Role.cs` / `auth.model.ts`):
 - **Soft-delete**: Employees and Projects use IsActive flag (not removed from DB)
 - **Hard-delete**: Departments only deletable when no active employees remain
 - **Capacity allocations**: Upsert pattern — setting PlannedHours to 0 deletes the record
+- **Employee bulk planning**: Bulk Plan in Employee Planning accepts `0` hours to clear allocations across the selected week range
+- **Project budgets**: Upsert pattern — setting BudgetedHours to 0 deletes the record
 - **Absences**: Upsert pattern — similar to allocations, per employee/week
+- **Holidays**: Single-day global entries; `PUT /api/absences/holidays` upserts holidays by date for all active employees, each contributing `Employee.WeeklyHours / 5` hours. Holiday edits can move a holiday date by sending optional `OriginalDate` in the upsert payload.
 - **Percentages**: Computed on-the-fly as `PlannedHours / Employee.WeeklyHours * 100`
 - **Error handling**: Backend middleware catches unhandled exceptions; frontend httpInterceptor shows snackbar
 - **JSON enums**: ProjectType serialized as strings via JsonStringEnumConverter
 - **Read queries**: All use `.AsNoTracking()` — entity tracking only on write paths
 - **Batch upserts**: Load all potentially matching records in one query before the loop, then match via dictionary for O(1) lookup (PlanningService, AbsenceService)
 - **Planning overview**: Uses grouped dictionaries after a single DB fetch — O(1) per employee/week cell instead of repeated LINQ scans
+- **Planning status thresholds**: Config-driven by overview type — employee overview uses `Planning:EmployeeOptimalThresholdPercent`; project overview uses `Planning:ProjectOptimalThresholdMinPercent` and `Planning:ProjectOptimalThresholdMaxPercent` (with min/max normalization if configured in reverse)
+- **Project legend thresholds**: Project Planning and Project Overview load thresholds from `GET /api/planning/project-thresholds` so legend labels and client-side project budget status logic match backend configuration
+- **Planning tooltips**: Employee Planning, Project Planning, Employee Overview, and Project Overview render tooltip items on separate lines using a shared multiline tooltip class
+- **Absence tooltip breakdown**: Employee Planning and Employee Overview tooltips show `Holiday` and `Regular absence` hours separately when present
+- **Week filter persistence**: Page-level views with a To Week picker persist the selected week in localStorage (`resourcePlanning.weekTo`) and reuse it on load (bulk planning dialogs are excluded)
 - **Subscription cleanup**: All Angular components use `takeUntilDestroyed(destroyRef)` on HTTP subscriptions to cancel in-flight requests on component destroy
 
 ## Database
@@ -125,9 +134,10 @@ Four roles defined as an enum (`Role.cs` / `auth.model.ts`):
 - SQLite migrations: `Data/Migrations/` — generated without env var
 - SQL Server migrations: `Data/MigrationsSqlServer/` — generated with `$env:DB_PROVIDER="SqlServer"`
 - `DesignTimeDbContextFactory` reads `DB_PROVIDER` env var to pick provider during migration generation
+- `DesignTimeDbContextFactory` also applies provider-specific migration assembly filtering, so EF CLI operations (including `dotnet ef database update`) only use migrations for the selected provider
 - Auto-migrates and seeds on startup in Development mode
 - Seed data: 6 employees, 3 departments, 4 projects, 1 admin user; allocations/budgets/absences for 10 weeks starting from first-startup date (dynamic, handles year rollover)
-- Indexes: unique on Email, Username, Department.Name; composite unique on allocation/absence/budget keys; `IsActive` indexes on Employee and Project for soft-delete filter performance
+- Indexes: unique on Email, Username, Department.Name; composite unique on allocation/absence/budget keys (`Absence` uses filtered unique indexes for regular week-based entries and holiday day-based entries); `IsActive` indexes on Employee and Project for soft-delete filter performance
 
 ## API Endpoints
 - `POST /api/auth/login` — [AllowAnonymous] returns `{ token, user }`
@@ -147,9 +157,12 @@ Four roles defined as an enum (`Role.cs` / `auth.model.ts`):
 - `PUT /api/planning/allocations` — batch upsert (array of allocations)
 - `GET /api/planning/overview` — per-employee/week aggregation with status (filter: departmentId)
 - `GET /api/planning/project-overview` — per-project/week aggregation with status
+- `GET /api/planning/project-thresholds` — configured project optimal min/max thresholds for UI legends/client-side status
 - `GET /api/planning/employee/{id}` — single employee allocations
-- `GET /api/absences` — filter by year, weekFrom, weekTo, employeeId, departmentId
-- `PUT /api/absences` — batch upsert (array of absences)
+- `GET /api/absences` — filter by year, weekFrom, weekTo, employeeId, departmentId, type (`Regular` | `Holiday`)
+- `PUT /api/absences` — batch upsert (array of absences, supports `type`)
+- `GET /api/absences/holidays` — holiday list by year/week range (single-day entries)
+- `PUT /api/absences/holidays` — batch upsert holidays by date for all active employees (auto `weeklyHours / 5`); supports date moves when payload includes optional `OriginalDate`
 - `DELETE /api/absences/{id}` — delete single absence
 
 ## Testing
@@ -185,4 +198,5 @@ cd frontend/resource-planning && npm test
 - Frontend API URL: `src/environments/environment.ts` → `http://localhost:5113/api`
 - CORS: `Cors:AllowedOrigins` in appsettings — development default `["http://localhost:4200"]`
 - `Seed:AdminPassword`: development default `admin123`; set a strong value in production
+- Planning thresholds: `Planning:EmployeeOptimalThresholdPercent` (default 80), `Planning:ProjectOptimalThresholdMinPercent` (default 90), `Planning:ProjectOptimalThresholdMaxPercent` (default 110)
 - Angular bundle budget: 1MB warning / 1MB error (angular.json)

@@ -189,7 +189,8 @@ export class AbsenceFormComponent implements OnInit {
       calendarWeek: entry.calendarWeek,
       year: this.data.year,
       hours: entry.hours,
-      note: this.note || undefined
+      note: this.note || undefined,
+      type: 'Regular'
     }));
 
     this.dialogRef.close(result);

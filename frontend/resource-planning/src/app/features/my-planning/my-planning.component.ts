@@ -15,6 +15,7 @@ import { EmployeeService } from '../../core/services/employee.service';
 import { AuthService } from '../../core/services/auth.service';
 import { Employee, EmployeeWeekOverview, WeekSummary } from '../../core/models';
 import { getISOWeek, getWeekStart, formatShortDate } from '../../core/utils/week.utils';
+import { loadStoredToWeek, saveStoredToWeek } from '../../core/utils/week-filter-storage.utils';
 
 @Component({
   selector: 'app-my-planning',
@@ -186,7 +187,7 @@ export class MyPlanningComponent implements OnInit {
 
   year = new Date().getFullYear();
   weekFrom = getISOWeek(new Date());
-  weekTo = getISOWeek(new Date()) + 5;
+  weekTo = loadStoredToWeek(getISOWeek(new Date()) + 5);
   weekFromDate = getWeekStart(this.year, this.weekFrom);
   weekToDate = getWeekStart(this.year, this.weekTo);
   showPercentage = false;
@@ -250,6 +251,7 @@ export class MyPlanningComponent implements OnInit {
     const date = event.value as Date;
     if (!date) return;
     this.weekTo = getISOWeek(date);
+    saveStoredToWeek(this.weekTo);
     this.weekToDate = getWeekStart(this.year, this.weekTo);
     this.load();
   }

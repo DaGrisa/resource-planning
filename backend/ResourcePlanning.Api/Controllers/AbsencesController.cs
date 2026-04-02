@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ResourcePlanning.Api.DTOs;
+using ResourcePlanning.Api.Entities;
 using ResourcePlanning.Api.Services;
 
 namespace ResourcePlanning.Api.Controllers;
@@ -20,9 +21,19 @@ public class AbsencesController : ControllerBase
         [FromQuery] int weekFrom,
         [FromQuery] int weekTo,
         [FromQuery] int? employeeId = null,
-        [FromQuery] int? departmentId = null)
+        [FromQuery] int? departmentId = null,
+        [FromQuery] AbsenceType? type = null)
     {
-        return await _service.GetAbsencesAsync(year, weekFrom, weekTo, employeeId, departmentId);
+        return await _service.GetAbsencesAsync(year, weekFrom, weekTo, employeeId, departmentId, type);
+    }
+
+    [HttpGet("holidays")]
+    public async Task<ActionResult<List<HolidayDto>>> GetHolidays(
+        [FromQuery] int year,
+        [FromQuery] int weekFrom,
+        [FromQuery] int weekTo)
+    {
+        return await _service.GetHolidaysAsync(year, weekFrom, weekTo);
     }
 
     [HttpPut]
@@ -30,6 +41,14 @@ public class AbsencesController : ControllerBase
     public async Task<IActionResult> UpsertAbsences([FromBody] List<AbsenceUpsertDto> absences)
     {
         await _service.UpsertAbsencesAsync(absences);
+        return NoContent();
+    }
+
+    [HttpPut("holidays")]
+    [Authorize(Roles = "Admin,DepartmentManager")]
+    public async Task<IActionResult> UpsertHolidays([FromBody] List<HolidayUpsertDto> holidays)
+    {
+        await _service.UpsertHolidaysAsync(holidays);
         return NoContent();
     }
 

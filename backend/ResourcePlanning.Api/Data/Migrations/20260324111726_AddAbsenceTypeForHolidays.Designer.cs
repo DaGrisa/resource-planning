@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ResourcePlanning.Api.Data;
 
@@ -10,9 +11,11 @@ using ResourcePlanning.Api.Data;
 namespace ResourcePlanning.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260324111726_AddAbsenceTypeForHolidays")]
+    partial class AddAbsenceTypeForHolidays
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.2");
@@ -28,9 +31,6 @@ namespace ResourcePlanning.Api.Data.Migrations
 
                     b.Property<int>("EmployeeId")
                         .HasColumnType("INTEGER");
-
-                    b.Property<DateOnly?>("HolidayDate")
-                        .HasColumnType("TEXT");
 
                     b.Property<decimal>("Hours")
                         .HasPrecision(5, 2)
@@ -48,13 +48,8 @@ namespace ResourcePlanning.Api.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmployeeId", "Type", "HolidayDate")
-                        .IsUnique()
-                        .HasFilter("HolidayDate IS NOT NULL");
-
                     b.HasIndex("EmployeeId", "CalendarWeek", "Year", "Type")
-                        .IsUnique()
-                        .HasFilter("HolidayDate IS NULL");
+                        .IsUnique();
 
                     b.ToTable("Absences");
                 });

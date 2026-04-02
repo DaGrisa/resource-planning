@@ -18,6 +18,7 @@ import autoTable from 'jspdf-autotable';
 import { PlanningService } from '../../../core/services/planning.service';
 import { ProjectWeekOverview, ProjectWeekSummary } from '../../../core/models';
 import { getISOWeek, getWeekStart, formatShortDate } from '../../../core/utils/week.utils';
+import { loadStoredToWeek, saveStoredToWeek } from '../../../core/utils/week-filter-storage.utils';
 
 @Component({
   selector: 'app-project-overview',
@@ -87,7 +88,8 @@ import { getISOWeek, getWeekStart, formatShortDate } from '../../../core/utils/w
                     [class.status-under]="week.status === 'under'"
                     [class.status-optimal]="week.status === 'optimal'"
                     [class.status-over]="week.status === 'over'"
-                    [matTooltip]="getTooltip(week)">
+                  [matTooltip]="getTooltip(week)"
+                  matTooltipClass="multiline-tooltip">
                   @if (showPercentage && week.budgetedHours > 0) {
                     {{ week.percentage | number:'1.0-0' }}%
                     <div class="detail">{{ week.allocatedHours | number:'1.1-1' }} / {{ week.budgetedHours | number:'1.1-1' }}h</div>
@@ -105,9 +107,9 @@ import { getISOWeek, getWeekStart, formatShortDate } from '../../../core/utils/w
 
     <div class="legend">
       <span class="legend-item"><span class="dot status-none"></span> No budget</span>
-      <span class="legend-item"><span class="dot status-under"></span> Under (&lt;80%)</span>
-      <span class="legend-item"><span class="dot status-optimal"></span> Optimal (80-100%)</span>
-      <span class="legend-item"><span class="dot status-over"></span> Over (&gt;100%)</span>
+      <span class="legend-item"><span class="dot status-under"></span> Under (&lt;{{ projectOptimalThresholdMin }}%)</span>
+      <span class="legend-item"><span class="dot status-optimal"></span> Optimal ({{ projectOptimalThresholdMin }}-{{ projectOptimalThresholdMax }}%)</span>
+      <span class="legend-item"><span class="dot status-over"></span> Over (&gt;{{ projectOptimalThresholdMax }}%)</span>
     </div>
     }
   `,
@@ -128,10 +130,12 @@ export class ProjectOverviewComponent implements OnInit {
   loading = false;
   year = new Date().getFullYear();
   weekFrom = getISOWeek(new Date());
-  weekTo = getISOWeek(new Date()) + 5;
+  weekTo = loadStoredToWeek(getISOWeek(new Date()) + 5);
   weekFromDate = getWeekStart(this.year, this.weekFrom);
   weekToDate = getWeekStart(this.year, this.weekTo);
   showPercentage = true;
+  projectOptimalThresholdMin = 90;
+  projectOptimalThresholdMax = 110;
 
   get weeks(): number[] {
     const w: number[] = [];
@@ -140,6 +144,11 @@ export class ProjectOverviewComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.planningService.getProjectThresholds().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(thresholds => {
+      this.projectOptimalThresholdMin = thresholds.optimalMinPercent;
+      this.projectOptimalThresholdMax = thresholds.optimalMaxPercent;
+      this.cdr.markForCheck();
+    });
     this.load();
   }
 
@@ -168,6 +177,7 @@ export class ProjectOverviewComponent implements OnInit {
     const date = event.value as Date;
     if (!date) return;
     this.weekTo = getISOWeek(date);
+    saveStoredToWeek(this.weekTo);
     this.weekToDate = getWeekStart(this.year, this.weekTo);
     this.load();
   }

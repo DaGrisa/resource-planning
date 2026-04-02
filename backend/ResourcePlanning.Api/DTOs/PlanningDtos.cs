@@ -34,7 +34,9 @@ public record WeekSummaryDto(
     decimal Percentage,
     string Status,
     List<ProjectAllocationDetailDto> Allocations,
-    decimal AbsenceHours = 0
+    decimal AbsenceHours = 0,
+    decimal RegularAbsenceHours = 0,
+    decimal HolidayHours = 0
 );
 
 public record ProjectAllocationDetailDto(
@@ -72,4 +74,9 @@ public record EmployeeAllocationDetailDto(
     int EmployeeId,
     string EmployeeName,
     decimal PlannedHours
+);
+
+public record ProjectPlanningThresholdsDto(
+    decimal OptimalMinPercent,
+    decimal OptimalMaxPercent
 );

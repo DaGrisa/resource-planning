@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace ResourcePlanning.Api.Data;
 
@@ -27,11 +28,13 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
             optionsBuilder.UseSqlServer(
                 "Server=.;Database=ResourcePlanning;Trusted_Connection=True;TrustServerCertificate=True;",
                 sql => sql.MigrationsHistoryTable("__EFMigrationsHistory")
-                          .MigrationsAssembly(typeof(DesignTimeDbContextFactory).Assembly.GetName().Name));
+                          .MigrationsAssembly(typeof(DesignTimeDbContextFactory).Assembly.GetName().Name))
+                .ReplaceService<IMigrationsAssembly, SqlServerMigrationsAssembly>();
         }
         else
         {
-            optionsBuilder.UseSqlite("Data Source=resourceplanning.db");
+            optionsBuilder.UseSqlite("Data Source=resourceplanning.db")
+                .ReplaceService<IMigrationsAssembly, SqliteMigrationsAssembly>();
         }
 
         return new AppDbContext(optionsBuilder.Options);

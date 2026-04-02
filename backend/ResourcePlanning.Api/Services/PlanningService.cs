@@ -9,12 +9,21 @@ namespace ResourcePlanning.Api.Services;
 public class PlanningService : IPlanningService
 {
     private readonly AppDbContext _db;
-    private readonly decimal _optimalThreshold;
+    private readonly decimal _employeeOptimalThreshold;
+    private readonly decimal _projectOptimalThresholdMin;
+    private readonly decimal _projectOptimalThresholdMax;
 
     public PlanningService(AppDbContext db, IConfiguration configuration)
     {
         _db = db;
-        _optimalThreshold = configuration.GetValue<decimal>("Planning:OptimalThresholdPercent", 80);
+        _employeeOptimalThreshold = configuration.GetValue<decimal>("Planning:EmployeeOptimalThresholdPercent", 80);
+        _projectOptimalThresholdMin = configuration.GetValue<decimal>("Planning:ProjectOptimalThresholdMinPercent", 90);
+        _projectOptimalThresholdMax = configuration.GetValue<decimal>("Planning:ProjectOptimalThresholdMaxPercent", 110);
+
+        if (_projectOptimalThresholdMax < _projectOptimalThresholdMin)
+        {
+            (_projectOptimalThresholdMin, _projectOptimalThresholdMax) = (_projectOptimalThresholdMax, _projectOptimalThresholdMin);
+        }
     }
 
     public async Task<List<CapacityAllocationDto>> GetAllocationsAsync(int year, int weekFrom, int weekTo,
@@ -120,6 +129,16 @@ public class PlanningService : IPlanningService
             .GroupBy(a => (a.EmployeeId, a.CalendarWeek))
             .ToDictionary(g => g.Key, g => g.Sum(a => a.Hours));
 
+        var regularAbsenceHoursByKey = absences
+            .Where(a => a.Type == AbsenceType.Regular)
+            .GroupBy(a => (a.EmployeeId, a.CalendarWeek))
+            .ToDictionary(g => g.Key, g => g.Sum(a => a.Hours));
+
+        var holidayHoursByKey = absences
+            .Where(a => a.Type == AbsenceType.Holiday)
+            .GroupBy(a => (a.EmployeeId, a.CalendarWeek))
+            .ToDictionary(g => g.Key, g => g.Sum(a => a.Hours));
+
         var result = new List<EmployeeWeekOverviewDto>();
 
         foreach (var emp in employees)
@@ -131,10 +150,12 @@ public class PlanningService : IPlanningService
                 allocByKey.TryGetValue((emp.Id, w), out var weekAllocations);
                 weekAllocations ??= [];
                 absenceHoursByKey.TryGetValue((emp.Id, w), out var absenceHours);
+                regularAbsenceHoursByKey.TryGetValue((emp.Id, w), out var regularAbsenceHours);
+                holidayHoursByKey.TryGetValue((emp.Id, w), out var holidayHours);
 
                 var totalHours = weekAllocations.Sum(a => a.PlannedHours) + absenceHours;
                 var percentage = emp.WeeklyHours > 0 ? totalHours / emp.WeeklyHours * 100 : 0;
-                var status = percentage > 100 ? "over" : percentage >= _optimalThreshold ? "optimal" : "under";
+                var status = percentage > 100 ? "over" : percentage >= _employeeOptimalThreshold ? "optimal" : "under";
 
                 weeks.Add(new WeekSummaryDto(
                     w, year, totalHours, Math.Round(percentage, 1), status,
@@ -142,7 +163,9 @@ public class PlanningService : IPlanningService
                         a.ProjectId, a.Project.Name, a.PlannedHours,
                         emp.WeeklyHours > 0 ? Math.Round(a.PlannedHours / emp.WeeklyHours * 100, 1) : 0
                     )).ToList(),
-                    absenceHours
+                    absenceHours,
+                    regularAbsenceHours,
+                    holidayHours
                 ));
             }
 
@@ -165,6 +188,14 @@ public class PlanningService : IPlanningService
 
         var result = await GetOverviewAsync(year, weekFrom, weekTo);
         return result.FirstOrDefault(r => r.EmployeeId == employeeId);
+    }
+
+    public Task<ProjectPlanningThresholdsDto> GetProjectThresholdsAsync()
+    {
+        return Task.FromResult(new ProjectPlanningThresholdsDto(
+            _projectOptimalThresholdMin,
+            _projectOptimalThresholdMax
+        ));
     }
 
     public async Task<List<ProjectWeekOverviewDto>> GetProjectOverviewAsync(int year, int weekFrom, int weekTo)
@@ -212,10 +243,18 @@ public class PlanningService : IPlanningService
 
                 var allocatedHours = weekAllocations.Sum(a => a.PlannedHours);
                 var percentage = budgetedHours > 0 ? allocatedHours / budgetedHours * 100 : 0;
-                var status = budgetedHours <= 0 ? "none" : percentage > 100 ? "over" : percentage >= _optimalThreshold ? "optimal" : "under";
+                var roundedPercentage = Math.Round(percentage, 1);
+                var roundedPercentageForStatus = Math.Round(percentage, 0);
+                var status = budgetedHours <= 0
+                    ? "none"
+                    : roundedPercentageForStatus > _projectOptimalThresholdMax
+                        ? "over"
+                        : roundedPercentageForStatus >= _projectOptimalThresholdMin
+                            ? "optimal"
+                            : "under";
 
                 weeks.Add(new ProjectWeekSummaryDto(
-                    w, year, budgetedHours, allocatedHours, Math.Round(percentage, 1), status,
+                    w, year, budgetedHours, allocatedHours, roundedPercentage, status,
                     weekAllocations.Select(a => new EmployeeAllocationDetailDto(
                         a.EmployeeId, a.Employee.FirstName + " " + a.Employee.LastName, a.PlannedHours
                     )).ToList()

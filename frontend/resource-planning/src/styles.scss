@@ -21,6 +21,10 @@ body {
   height: 100%;
 }
 
+.multiline-tooltip {
+  white-space: pre-line;
+}
+
 // Global page header pattern used by all feature pages
 .page-header {
   display: flex;

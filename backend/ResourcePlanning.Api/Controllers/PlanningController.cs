@@ -64,6 +64,12 @@ public class PlanningController : ControllerBase
         return await _service.GetProjectOverviewAsync(year, weekFrom, weekTo);
     }
 
+    [HttpGet("project-thresholds")]
+    public async Task<ActionResult<ProjectPlanningThresholdsDto>> GetProjectThresholds()
+    {
+        return await _service.GetProjectThresholdsAsync();
+    }
+
     [HttpPut("project-budgets")]
     [Authorize(Roles = "Admin,DepartmentManager,ProjectManager")]
     public async Task<IActionResult> UpsertProjectBudgets([FromBody] List<ProjectWeeklyBudgetUpsertDto> budgets)

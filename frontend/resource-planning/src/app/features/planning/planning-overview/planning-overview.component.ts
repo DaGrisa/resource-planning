@@ -16,6 +16,7 @@ import { DepartmentService } from '../../../core/services/department.service';
 import { EmployeeWeekOverview } from '../../../core/models';
 import { Department } from '../../../core/models';
 import { getISOWeek, getWeekStart, formatShortDate } from '../../../core/utils/week.utils';
+import { loadStoredToWeek, saveStoredToWeek } from '../../../core/utils/week-filter-storage.utils';
 
 @Component({
   selector: 'app-planning-overview',
@@ -88,7 +89,8 @@ import { getISOWeek, getWeekStart, formatShortDate } from '../../../core/utils/w
                     [class.status-optimal]="week.status === 'optimal'"
                     [class.status-over]="week.status === 'over'"
                     [class.status-empty]="week.totalPlannedHours === 0"
-                    [matTooltip]="getTooltip(week)">
+                  [matTooltip]="getTooltip(week)"
+                  matTooltipClass="multiline-tooltip">
                   @if (showPercentage) {
                     {{ week.percentage | number:'1.0-0' }}%
                     <div class="pct">{{ week.totalPlannedHours | number:'1.1-1' }}h</div>
@@ -128,7 +130,7 @@ export class PlanningOverviewComponent implements OnInit {
   loading = false;
   year = new Date().getFullYear();
   weekFrom = getISOWeek(new Date());
-  weekTo = getISOWeek(new Date()) + 5;
+  weekTo = loadStoredToWeek(getISOWeek(new Date()) + 5);
   weekFromDate = getWeekStart(this.year, this.weekFrom);
   weekToDate = getWeekStart(this.year, this.weekTo);
   departmentId?: number;
@@ -171,6 +173,7 @@ export class PlanningOverviewComponent implements OnInit {
     const date = event.value as Date;
     if (!date) return;
     this.weekTo = getISOWeek(date);
+    saveStoredToWeek(this.weekTo);
     this.weekToDate = getWeekStart(this.year, this.weekTo);
     this.load();
   }
@@ -188,7 +191,11 @@ export class PlanningOverviewComponent implements OnInit {
 
   getTooltip(week: any): string {
     const lines: string[] = [];
-    if (week.absenceHours > 0) lines.push(`Absence: ${week.absenceHours}h`);
+    if (week.holidayHours > 0) lines.push(`Holiday: ${week.holidayHours}h`);
+    if (week.regularAbsenceHours > 0) lines.push(`Regular absence: ${week.regularAbsenceHours}h`);
+    if (week.absenceHours > 0 && week.holidayHours <= 0 && week.regularAbsenceHours <= 0) {
+      lines.push(`Absence: ${week.absenceHours}h`);
+    }
     if (week.allocations?.length) {
       lines.push(...week.allocations.map((a: any) => `${a.projectName}: ${a.plannedHours}h`));
     }

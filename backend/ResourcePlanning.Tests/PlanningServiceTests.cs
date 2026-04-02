@@ -10,6 +10,22 @@ public class PlanningServiceTests : IDisposable
     private readonly TestDbContextFactory _factory;
     private static readonly IConfiguration DefaultConfig = new ConfigurationBuilder().Build();
 
+    private static IConfiguration CreateConfig(decimal? employeeThreshold = null, decimal? projectMinThreshold = null, decimal? projectMaxThreshold = null)
+    {
+        var values = new Dictionary<string, string?>();
+
+        if (employeeThreshold.HasValue)
+            values["Planning:EmployeeOptimalThresholdPercent"] = employeeThreshold.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        if (projectMinThreshold.HasValue)
+            values["Planning:ProjectOptimalThresholdMinPercent"] = projectMinThreshold.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        if (projectMaxThreshold.HasValue)
+            values["Planning:ProjectOptimalThresholdMaxPercent"] = projectMaxThreshold.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        return new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+    }
+
     public PlanningServiceTests()
     {
         _factory = new TestDbContextFactory();
@@ -143,6 +159,24 @@ public class PlanningServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetOverview_ShouldUseConfiguredEmployeeThreshold()
+    {
+        using var db = _factory.CreateContext();
+        var (empId, projId) = await SeedEmployeeAndProject(db);
+        var config = CreateConfig(employeeThreshold: 90m, projectMinThreshold: 70m, projectMaxThreshold: 95m);
+        var service = new PlanningService(db, config);
+
+        // 35h / 40h = 87.5% -> under when employee threshold is 90%
+        await service.UpsertAllocationsAsync(new List<AllocationUpsertDto>
+        {
+            new(empId, projId, 6, 2026, 35m)
+        });
+
+        var overview = await service.GetOverviewAsync(2026, 6, 6);
+        Assert.Equal("under", overview[0].Weeks[0].Status);
+    }
+
+    [Fact]
     public async Task GetAllocations_ShouldFilterByWeekRange()
     {
         using var db = _factory.CreateContext();
@@ -233,7 +267,8 @@ public class PlanningServiceTests : IDisposable
     {
         using var db = _factory.CreateContext();
         var (empId, projId) = await SeedEmployeeAndProject(db);
-        var service = new PlanningService(db, DefaultConfig);
+        var config = CreateConfig(projectMinThreshold: 80m, projectMaxThreshold: 100m);
+        var service = new PlanningService(db, config);
 
         // Budget 40h, allocate 35h → 87.5% → optimal
         await service.UpsertProjectBudgetsAsync(new List<ProjectWeeklyBudgetUpsertDto>
@@ -269,6 +304,127 @@ public class PlanningServiceTests : IDisposable
 
         var overview = await service.GetProjectOverviewAsync(2026, 6, 6);
         Assert.Equal("over", overview[0].Weeks[0].Status);
+    }
+
+    [Fact]
+    public async Task GetProjectOverview_ShouldReturnUnder_WhenBelowProjectMinThreshold()
+    {
+        using var db = _factory.CreateContext();
+        var (empId, projId) = await SeedEmployeeAndProject(db);
+        var config = CreateConfig(projectMinThreshold: 85m, projectMaxThreshold: 95m);
+        var service = new PlanningService(db, config);
+
+        await service.UpsertProjectBudgetsAsync(new List<ProjectWeeklyBudgetUpsertDto>
+        {
+            new(projId, 6, 2026, 100m)
+        });
+        await service.UpsertAllocationsAsync(new List<AllocationUpsertDto>
+        {
+            new(empId, projId, 6, 2026, 80m)
+        });
+
+        var overview = await service.GetProjectOverviewAsync(2026, 6, 6);
+        Assert.Equal("under", overview[0].Weeks[0].Status);
+    }
+
+    [Fact]
+    public async Task GetProjectOverview_ShouldReturnOver_WhenAboveProjectMaxThreshold()
+    {
+        using var db = _factory.CreateContext();
+        var (empId, projId) = await SeedEmployeeAndProject(db);
+        var config = CreateConfig(projectMinThreshold: 85m, projectMaxThreshold: 95m);
+        var service = new PlanningService(db, config);
+
+        await service.UpsertProjectBudgetsAsync(new List<ProjectWeeklyBudgetUpsertDto>
+        {
+            new(projId, 6, 2026, 100m)
+        });
+        await service.UpsertAllocationsAsync(new List<AllocationUpsertDto>
+        {
+            new(empId, projId, 6, 2026, 98m)
+        });
+
+        var overview = await service.GetProjectOverviewAsync(2026, 6, 6);
+        Assert.Equal("over", overview[0].Weeks[0].Status);
+    }
+
+    [Fact]
+    public async Task GetProjectOverview_ShouldUseProjectThresholds_IndependentOfEmployeeThreshold()
+    {
+        using var db = _factory.CreateContext();
+        var (empId, projId) = await SeedEmployeeAndProject(db);
+        var config = CreateConfig(employeeThreshold: 95m, projectMinThreshold: 80m, projectMaxThreshold: 90m);
+        var service = new PlanningService(db, config);
+
+        // 85 / 100 = 85% -> optimal for project range [80,90], regardless of employee threshold 95%
+        await service.UpsertProjectBudgetsAsync(new List<ProjectWeeklyBudgetUpsertDto>
+        {
+            new(projId, 6, 2026, 100m)
+        });
+        await service.UpsertAllocationsAsync(new List<AllocationUpsertDto>
+        {
+            new(empId, projId, 6, 2026, 85m)
+        });
+
+        var overview = await service.GetProjectOverviewAsync(2026, 6, 6);
+        Assert.Equal("optimal", overview[0].Weeks[0].Status);
+    }
+
+    [Fact]
+    public async Task GetProjectOverview_ShouldReturnOptimal_WhenPercentageEqualsMaxThreshold()
+    {
+        using var db = _factory.CreateContext();
+        var (empId, projId) = await SeedEmployeeAndProject(db);
+        var config = CreateConfig(projectMinThreshold: 90m, projectMaxThreshold: 110m);
+        var service = new PlanningService(db, config);
+
+        await service.UpsertProjectBudgetsAsync(new List<ProjectWeeklyBudgetUpsertDto>
+        {
+            new(projId, 6, 2026, 10m)
+        });
+        await service.UpsertAllocationsAsync(new List<AllocationUpsertDto>
+        {
+            new(empId, projId, 6, 2026, 11m)
+        });
+
+        var overview = await service.GetProjectOverviewAsync(2026, 6, 6);
+        Assert.Equal(110m, overview[0].Weeks[0].Percentage);
+        Assert.Equal("optimal", overview[0].Weeks[0].Status);
+    }
+
+    [Fact]
+    public async Task GetProjectOverview_ShouldReturnOptimal_WhenDisplayedPercentRoundsToMaxThreshold()
+    {
+        using var db = _factory.CreateContext();
+        var (empId, projId) = await SeedEmployeeAndProject(db);
+        var config = CreateConfig(projectMinThreshold: 90m, projectMaxThreshold: 110m);
+        var service = new PlanningService(db, config);
+
+        await service.UpsertProjectBudgetsAsync(new List<ProjectWeeklyBudgetUpsertDto>
+        {
+            new(projId, 6, 2026, 10m)
+        });
+        await service.UpsertAllocationsAsync(new List<AllocationUpsertDto>
+        {
+            new(empId, projId, 6, 2026, 11.04m)
+        });
+
+        var overview = await service.GetProjectOverviewAsync(2026, 6, 6);
+        Assert.Equal(110.4m, overview[0].Weeks[0].Percentage);
+        Assert.Equal("optimal", overview[0].Weeks[0].Status);
+    }
+
+    [Fact]
+    public async Task GetProjectThresholds_ShouldReturnConfiguredValues()
+    {
+        using var db = _factory.CreateContext();
+        var config = CreateConfig(projectMinThreshold: 90m, projectMaxThreshold: 110m);
+        var service = new PlanningService(db, config);
+
+        var thresholds = await service.GetProjectThresholdsAsync();
+
+        Assert.Equal(90m, thresholds.OptimalMinPercent);
+        Assert.Equal(110m, thresholds.OptimalMaxPercent);
     }
 
     [Fact]
